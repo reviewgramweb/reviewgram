@@ -1,0 +1,21 @@
+<div class="changelog_modal_wrap">
+
+  <a class="modal-close-button" ng-click="$close()"><i></i></a>
+
+  <div class="modal-body">
+
+    <div class="changelog_card_wrap" ng-switch="lastVersion === false">
+      <div ng-switch-when="true">
+        <div class="changelog_card"></div>
+        <h2 class="changelog_header" my-i18n="changelog_modal_header_recent_updates_md"></h2>
+      </div>
+      <div ng-switch-default>
+        <div class="changelog_card"></div>
+        <h2 class="changelog_header" my-i18n="changelog_modal_header_new_updates_md"></h2>
+      </div>
+    </div>
+
+
+  </div>
+
+</div>
