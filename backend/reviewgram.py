@@ -37,6 +37,11 @@ def bot_api():
     return 'Hello world'
 
 
+@app.route('/reviewgram/bot_username/')
+def bot_username():
+    return os.getenv("BOT_USERNAME")
+
+
 gunicorn_logger = logging.getLogger("gunicorn.error")
 app.logger.handlers = gunicorn_logger.handlers
 app.logger.setLevel(gunicorn_logger.level)

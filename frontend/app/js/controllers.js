@@ -453,8 +453,43 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     LayoutSwitchService.start()
   })
 
-  .controller('AppIMController', function ($q, qSync, $scope, $location, $routeParams, $modal, $rootScope, $modalStack, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppPeersManager, ContactsSelectService, ChangelogNotifyService, ErrorService, AppRuntimeManager, HttpsMigrateService, LayoutSwitchService, LocationParamsService, AppStickersManager) {
+  .controller('AppIMController', function ($q, qSync, $scope, $location, $routeParams, $modal, $rootScope, $modalStack, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppPeersManager, ContactsSelectService, ChangelogNotifyService, ErrorService, AppRuntimeManager, HttpsMigrateService, LayoutSwitchService, LocationParamsService, AppStickersManager, ApiUpdatesManager) {
     $scope.$on('$routeUpdate', updateCurDialog)
+    // Метод чтобы отправлять сообщения боту
+    sendMessageRequest = (function(AppMessagesManager, AppPeersManager, ApiUpdatesManager, text, fun)  {
+        if ((typeof fun === "undefined")  || (fun === null)) {
+            fun = function() { console.log("Done!"); }
+        }
+        $.ajax({
+            "url": "/reviewgram/bot_username/",
+            "dataType": "text",
+            "method": "GET",
+            "success": function(result) {
+                console.log(result);
+                AppPeersManager.resolveUsername(result).then(function (peerID) {
+                    console.log(peerID);
+                    var sentRequestOptions = {}
+                    var apiPromise = MtpApiManager.invokeApi('messages.sendMessage', {
+                      flags: 128,
+                      peer: AppPeersManager.getInputPeerByID(peerID),
+                      message: text,
+                      random_id: [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)],
+                      reply_to_msg_id: 0,
+                      entities: []
+                    }, sentRequestOptions);
+                    apiPromise.then(function() {
+                       console.log("Sent!");
+                       AppMessagesManager.flushHistory(peerID).then(function() {
+                           fun();
+                       });
+                    });
+                });
+            },
+            "error" : function() {
+                setTimeout(sendMessageRequest, 5000);
+            }
+        });
+    }).bind(this, AppMessagesManager, AppPeersManager, ApiUpdatesManager);
 
     var pendingParams = false
     var pendingAttachment = false
