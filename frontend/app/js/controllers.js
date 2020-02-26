@@ -648,6 +648,8 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     $scope.logOut = function () {
       ErrorService.confirm({type: 'LOGOUT'}).then(function () {
         MtpApiManager.logOut().then(function () {
+          localStorage.removeItem("reviewgram_uuid");
+          localStorage.removeItem("reviewgram_uuid_timestamp");
           location.hash = '/login'
           AppRuntimeManager.reload()
         })
@@ -4399,6 +4401,8 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       ErrorService.confirm({type: 'LOGOUT'}).then(function () {
         MtpApiManager.logOut().then(function () {
           location.hash = '/login'
+          localStorage.removeItem("reviewgram_uuid");
+          localStorage.removeItem("reviewgram_uuid_timestamp");
           AppRuntimeManager.reload()
         })
       })

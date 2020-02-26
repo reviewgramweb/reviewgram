@@ -12,17 +12,7 @@ var extraModules = []
 if (Config.Modes.animations) {
   extraModules.push('ngAnimate')
 }
-var globalCurrentDialog = "";
-var sendMessageRequest = null;
 
-// Функция для генерации уникального UUID
-var large_uuidv4 = function() {
-  var result =  ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = nextRandomInt(0xFFFFFFFF) * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return  v.toString(16);
-  }));
-  return (new Date().getTime()) + "-" + result;
-}
 // Declare app level module which depends on filters, and services
 angular.module('myApp', [
   'ngRoute',
