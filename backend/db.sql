@@ -13,3 +13,16 @@ CREATE TABLE token_to_user_id(
 ) ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+
+
+CREATE TABLE token_to_chat_id(
+    ID BIGINT NOT NULL AUTO_INCREMENT,
+    TOKEN TEXT,
+    CHAT_ID BIGINT,
+    TSTAMP BIGINT,
+    KEY IX_TTUI_TOKEN (TOKEN(50)),
+    KEY IX_TCUI_CHAT (CHAT_ID),
+    PRIMARY KEY(ID)
+) ENGINE=InnoDB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
