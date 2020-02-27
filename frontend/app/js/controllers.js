@@ -491,6 +491,10 @@ angular.module('myApp.controllers', ['myApp.i18n'])
         });
     }).bind(this, AppMessagesManager, AppPeersManager, ApiUpdatesManager);
 
+    requestPeerID = (function(AppPeersManager, peerString) {
+        return AppPeersManager.getPeerID(peerString);
+    }).bind(this,  AppPeersManager);
+
     var pendingParams = false
     var pendingAttachment = false
     $scope.$on('history_focus', function (e, peerData) {

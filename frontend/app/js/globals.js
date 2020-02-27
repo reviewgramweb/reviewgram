@@ -1,5 +1,6 @@
 var globalCurrentDialog = "";
 var sendMessageRequest = null;
+var requestPeerID = null;
 var tokenLiveCountMinutes = 150;
 var secondsInMinute = 60;
 
