@@ -69,3 +69,52 @@ var startRequestForRepoInformation = function(chatId, fun)  {
         }
     });
 };
+
+var getRepoSettings = function(chatId, fun)  {
+    fetchOrCreateUUID(function(isNew, uuid, timestamp) {
+        var wrapper = (function(fun) {
+            makeRepeatedRequest({
+                "url": "/reviewgram/get_repo_settings/",
+                "dataType": "json",
+                "data": {
+                    "chatId" : requestPeerID(chatId),
+                    "uuid": uuid,
+                },
+                "method": "GET",
+            }, fun);
+        }).bind(null, fun);
+        if (isNew) {
+            var text = btoa(uuid);
+            sendMessageRequest(text, wrapper);
+        } else {
+            wrapper();
+        }
+    });
+};
+
+
+var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, password)  {
+    fetchOrCreateUUID(function(isNew, uuid, timestamp) {
+        var wrapper = (function(fun) {
+            makeRepeatedRequest({
+                "url": "/reviewgram/set_repo_settings/",
+                "dataType": "json",
+                "data": {
+                    "chatId" : requestPeerID(chatId),
+                    "uuid": uuid,
+                    "repoUserName": repoUserName,
+                    "repoSameName": repoSameName,
+                    "user": user,
+                    "password": btoa(password)
+                },
+                "method": "POST",
+            }, fun);
+        }).bind(null, fun);
+        if (isNew) {
+            var text = btoa(uuid);
+            sendMessageRequest(text, wrapper);
+        } else {
+            wrapper();
+        }
+    });
+};
