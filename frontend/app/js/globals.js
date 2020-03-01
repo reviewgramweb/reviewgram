@@ -55,7 +55,7 @@ var startRequestForRepoInformation = function(chatId, fun)  {
                 "url": "/reviewgram/register_chat_id_for_token/",
                 "dataType": "text",
                 "data": {
-                    "chatId" : chatId,
+                    "chatId" : requestPeerID(chatId),
                     "uuid": uuid,
                 },
                 "method": "POST",
