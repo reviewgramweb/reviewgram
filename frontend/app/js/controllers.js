@@ -691,6 +691,9 @@ angular.module('myApp.controllers', ['myApp.i18n'])
     $scope.reviewgramShowRepoSettings = function() {
         $scope.$broadcast('reviewgram_show_repo_settings')
     }
+    $scope.reviewgramShowCommitWindow = function() {
+        $scope.$broadcast('reviewgram_show_commit_window')
+    }
 
     updateCurDialog()
 
@@ -1267,9 +1270,30 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             scope: $scope,
             windowClass: 'reviewgram_repo_settings_all_modal_window mobile_modal'
         });
+        getRepoSettings(globalCurrentDialog, function(o) {
+            $("#repoUserName").val(o.repo_user_name);
+            $("#repoSameName").val(o.repo_same_name);
+            $("#user").val(o.user);
+            $("#password").val(o.password);
+            $("#error").css('display', 'none');
+            $("#rsettings_preloader").css('display', 'none');
+            $("#rsettings_form").css('display', 'block');
+        });
     };
 
+    function reviewgramShowCommitWindow() {
+        var $scope = $rootScope.$new();
+
+        $modal.open({
+            controller: 'ReviewgramCommitWindowController',
+            templateUrl: templateUrl('reviewgram_commit_all'),
+            scope: $scope,
+            windowClass: 'reviewgram_commit_all_modal_window mobile_modal'
+        });
+    }
+
     $scope.$on('reviewgram_show_repo_settings', reviewgramShowRepoSettings)
+    $scope.$on('reviewgram_show_commit_window', reviewgramShowCommitWindow)
 
     $scope.$on('history_edit_toggle', toggleEdit)
     $scope.$on('history_edit_flush', selectedFlush)
@@ -4417,8 +4441,48 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       LayoutSwitchService.switchLayout(false)
     }
   })
-  .controller('ReviewgramRepoSettingsController', function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager) {
+  .controller('ReviewgramRepoSettingsController', function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager, $modalInstance) {
+      $scope.submitForm = function() {
+          var repoUserName = $("#repoUserName").val().trim();
+          var repoSameName = $("#repoSameName").val().trim();
+          var user = $("#user").val().trim();
+          var password = $("#password").val().trim();
+          var errors = [];
+          if (repoUserName.length == 0) {
+              errors.push("Не указано имя собственника репозитория");
+          }
+          if (repoSameName.length == 0) {
+              errors.push("Не указано имя репозитория");
+          }
+          if (user.length == 0) {
+              errors.push("Не указано имя пользователя");
+          }
+          if (password.length == 0) {
+              errors.push("Не указан пароль");
+          }
+          if (errors.length != 0) {
+              $("#error").css("display", "block").html(errors.join("<br />"));
+          } else {
+              $("#error").css("display", "none");
+              $("#rsettings_preloader").css('display', 'block');
+              $("#rsettings_form").css('display', 'none');
+              var fun = function(o) {
+                if (o.error.length != 0) {
+                    $("#rsettings_preloader").css('display', 'none');
+                    $("#rsettings_form").css('display', 'block');
+                    $("#error").css("display", "block").html(o.error);
+                } else {
+                    $modalInstance.dismiss();
+                }
+              };
+              setRepoSettings(globalCurrentDialog, fun, repoUserName, repoSameName, user, password);
+          }
+      }
+  })
+  .controller('ReviewgramCommitWindowController', function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager, $modalInstance) {
+      $scope.submitForm = function() {
 
+      }
   })
   .controller('ChangelogModalController', function ($scope, $modal) {
     $scope.currentVersion = Config.App.version

@@ -411,6 +411,7 @@
     "head_select_messages": "Выбрать сообщения",
     "head_media_photos": "Фотографии",
 	"head_reviewgram_repo_settings": "Интеграция с Github",
+	"head_reviewgram_commit": "Внести правки в репо",
     "head_media_video": "Видео",
     "head_media_documents": "Файлы",
     "head_media_audio": "Голосовые сообщения",
