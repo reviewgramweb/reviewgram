@@ -59,3 +59,70 @@
     padding-left: 10px;
     font-size: 10px;
 }
+
+
+.reviewgram-select-box {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.reviewgram-select-box ul {
+    list-style: none;
+}
+
+
+.reviewgram-select-box li:before {
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-weight: normal;
+    font-size: 11px;
+    word-break: break-all;
+    background-color: rgb(220, 220, 220);
+    color: rgb(73,194,134);
+    cursor: pointer;
+    content: "\25CF"
+}
+
+.reviewgram-select-box li {
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-weight: normal;
+    font-size: 11px;
+    word-break: break-all;
+    background-color: rgb(220, 220, 220);
+    color: rgb(73,194,134);
+    max-width: 400px;
+    cursor: pointer;
+}
+
+
+
+.reviewgram-select-box li.selected:before {
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-weight: normal;
+    font-size: 11px;
+    word-break: break-all;
+    color: rgb(255, 255, 255);
+    background-color: rgb(73,194,134);
+    max-width: 400px;
+    cursor: pointer;
+    content: "\25CF"
+}
+
+
+.reviewgram-select-box li.selected {
+    padding: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-weight: normal;
+    font-size: 11px;
+    word-break: break-all;
+    color: rgb(255, 255, 255);
+    background-color: rgb(73,194,134);
+    max-width: 400px;
+    cursor: pointer;
+}

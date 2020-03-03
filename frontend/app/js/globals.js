@@ -149,3 +149,9 @@ var initMicrophoneWidgets = function() {
         }
     });
 }
+
+
+$("body").on("click", ".reviewgram-select-box li", function() {
+    $(this).closest(".reviewgram-select-box").find("li").removeClass("selected");
+    $(this).addClass("selected");
+});
