@@ -70,6 +70,7 @@ var startRequestForRepoInformation = function(chatId, fun)  {
     });
 };
 
+// Получение настроек репозитория
 var getRepoSettings = function(chatId, fun)  {
     fetchOrCreateUUID(function(isNew, uuid, timestamp) {
         var wrapper = (function(fun) {
@@ -92,7 +93,7 @@ var getRepoSettings = function(chatId, fun)  {
     });
 };
 
-
+// Установка настроек репозитория
 var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, password)  {
     fetchOrCreateUUID(function(isNew, uuid, timestamp) {
         var wrapper = (function(fun) {
@@ -118,3 +119,33 @@ var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, pa
         }
     });
 };
+
+var widgetsToCallbacks = {};
+
+// Инициализация виджета микрофона
+// TODO: Нормальная работа
+var initMicrophoneWidgets = function() {
+    var e = $(".reviewgram-microphone-widget");
+    e.html("<div class=\"button-wrapper\"><div class=\"button\"></div><div class=\"label\">Нажмите, чтобы ввести голосом</div></div>");
+    for (var i = 0; i < e.length; i++) {
+        $(e[i]).attr("specific-id", i);
+    }
+    e.click(function() {
+        if ($(this).hasClass("in-process")) {
+            $(this).removeClass("in-process");
+            $(this).addClass("recognizing");
+            $(this).find(".label").html("Производится распознавание");
+            // TODO: callback here
+        } else {
+            if ($(this).hasClass("recognizing")) {
+                $(this).removeClass("recognizing");
+                $(this).find(".label").html("Нажмите, чтобы ввести голосом");
+                // TODO: callback here
+            } else {
+                $(this).addClass("in-process");
+                $(this).find(".label").html("Введите команду");
+                // TODO: callback here
+            }
+        }
+    });
+}
