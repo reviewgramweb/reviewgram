@@ -68,6 +68,7 @@
 
 .reviewgram-select-box ul {
     list-style: none;
+    padding-left: 0px;
 }
 
 
@@ -125,4 +126,8 @@
     background-color: rgb(73,194,134);
     max-width: 400px;
     cursor: pointer;
+}
+
+.reviewgram_commit_all_modal_window  .mobile_modal_body .btn {
+    font-size: 11px;
 }

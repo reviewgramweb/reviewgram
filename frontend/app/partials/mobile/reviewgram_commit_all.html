@@ -9,7 +9,7 @@
             <li>
               <a ng-click="$close()" class="navbar-quick-media-back">
                 <i class="icon icon-back"></i>
-                <h4>Настройки интеграции с GitHub</h4>
+                <h4>Внести правки</h4>
               </a>
             </li>
           </ul>
@@ -21,31 +21,29 @@
   </div>
 
   <div class="modal-body mobile_modal_body">
-  <div id="rsettings_preloader" class="reviewgram-preloader">
+  <div id="rcommit_preloader" class="reviewgram-preloader">
   </div>
-  <div id="rsettings_form" style="display: none;">
+  <div id="rcommit_error" style="display: none;">
+      <div class="reviewgram-error"></div>
+  </div>
+  <div id="rcommit_branch_select" style="display: none;">
       <form class="modal_simple_form"   my-vertical-position="0.3">
-         <h4>Для задания имени репозитория используется формат вида https://github.com/&lt;имя собственника репо&gt;/&lt;имя репозитория&gt;/</h4>
-
-        <div class="reviewgram-error" id="error" style="display: none;">
-            Не указано имя собственника репозитория
+        <div class="reviewgram-error" id="branch_select_error" style="dispay: none;" >
         </div>
+        <div class="reviewgram-microphone-widget" data-for="branchNameSearch"></div>
 
         <div class="form-group">
-          <input class="form-control input-lg" my-focused type="text" placeholder="Имя собственника репо" id="repoUserName"  name="repoUserName"/>
+          <input class="form-control input-lg" my-focused type="text" placeholder="Имя ветки" id="branchNameSearch"  name="branchNameSearch"/>
         </div>
         <div class="form-group">
-          <input class="form-control input-lg" type="text" placeholder="Имя репозитория" id="repoSameName" name="repoSameName"/>
-        </div>
-        <div class="form-group">
-          <input class="form-control input-lg" type="text" placeholder="Логин пользователя" id="user" name="user"/>
-        </div>
-        <div class="form-group">
-          <input class="form-control input-lg" type="password" placeholder="Пароль" id="password" name="password"/>
+            Выберите ветку:
+            <div class="reviewgram-select-box" id="branchName">
+                <ul></ul>
+            </div>
         </div>
         <div class="md_simple_modal_footer">
           <button class="btn btn-md" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
-          <button class="btn btn-md btn-md-primary" ng-click="submitForm()">Сохранить</button>
+          <button class="btn btn-md btn-md-primary" ng-click="submitBranchName()">Выбрать ветку</button>
         </div>
       </form>
   </div>

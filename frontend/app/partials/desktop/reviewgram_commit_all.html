@@ -5,47 +5,37 @@
       <div class="md_modal_actions_wrap clearfix">
         <a class="md_modal_action md_modal_action_close" ng-click="$close()" my-i18n="modal_close"></a>
       </div>
-      <div class="md_modal_title">Настройки интеграции с GitHub</div>
+      <div class="md_modal_title">Внести правки</div>
     </div>
   </div>
 
   <div class="md_modal_body">
-      <div id="rsettings_preloader" class="reviewgram-preloader">
+      <div id="rcommit_preloader" class="reviewgram-preloader">
       </div>
-      <div id="rsettings_form" style="display: none;">
+      <div id="rcommit_error" style="display: none;">
+          <div class="reviewgram-error"></div>
+      </div>
+      <div id="rcommit_branch_select" style="display: none;">
           <form class="modal_simple_form" >
-
-            <h4>Для задания имени репозитория используется формат вида https://github.com/&lt;имя собственника репозитория&gt;/&lt;имя репозитория&gt;/</h4>
-
-            <div class="reviewgram-error" id="error" style="dispay: none;" >
-              Не указано имя собственника репозитория
+            <div class="reviewgram-error" id="branch_select_error" style="dispay: none;" >
+            </div>
+            <div class="reviewgram-microphone-widget" data-for="branchNameSearch"></div>
+            <div class="md-input-group">
+              <label class="md-input-label">Имя ветки</label>
+              <input class="md-input" my-focused type="text" name="branchNameSearch" id="branchNameSearch"  text="" required="required" />
             </div>
 
-            <div class="md-input-group" my-labeled-input>
-              <label class="md-input-label" for="repoUserName">Имя собственника репозитория</label>
-              <input class="md-input" my-focused type="text" name="repoUserName" id="repoUserName"  required="required" />
+            <div>
+              Выберите ветку:
+              <div class="reviewgram-select-box" id="branchName">
+                  <ul></ul>
+              </div>
             </div>
-
-            <div class="md-input-group" my-labeled-input>
-              <label class="md-input-label" for="repoSameName">Имя репозитория</label>
-              <input class="md-input" type="text" name="repoSameName" id="repoSameName" required="required" />
-            </div>
-
-            <div class="md-input-group" my-labeled-input>
-              <label class="md-input-label" for="user">Логин пользователя</label>
-              <input class="md-input" type="text" name="user" id="user" required="required" />
-            </div>
-
-            <div class="md-input-group" my-labeled-input>
-              <label class="md-input-label" for="password">Пароль</label>
-              <input class="md-input" type="password" name="password" id="password" required="required" />
-            </div>
-
           </form>
 
           <div class="md_simple_modal_footer">
             <button class="btn btn-md" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
-            <button class="btn btn-md btn-md-primary" ng-click="submitForm()">Сохранить</button>
+            <button class="btn btn-md btn-md-primary" ng-click="submitBranchName()">Выбрать ветку</button>
           </div>
       </div>
   </div>

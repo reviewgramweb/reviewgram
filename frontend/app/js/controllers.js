@@ -1290,6 +1290,46 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             scope: $scope,
             windowClass: 'reviewgram_commit_all_modal_window mobile_modal'
         });
+        setTimeout(function() {
+            getRepoSettings(globalCurrentDialog, function(o) {
+                initMicrophoneWidgets();
+                repoSettings = o;
+                if (o.repo_user_name.length == 0 || o.repo_same_name.length == 0 || o.user == 0 || o.password == 0) {
+                    $("#rcommit_preloader").css('display', 'none');
+                    $("#rcommit_error").css('display', 'block');
+                    $("#rcommit_error").find(".reviewgram-error").html("Не указаны параметры репозитория. Пожалуйста, настройте их");
+                    $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                } else {
+                    $.ajax({
+                        "method": "GET",
+                        "dataType": "json",
+                        "username": repoSettings.user,
+                        "passworrd": repoSettings.password,
+                        "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+                        "success": function(o) {
+                            console.log(o);
+                            $("#rcommit_preloader").css('display', 'none');
+                            $("#rcommit_branch_select").css('display', 'block');
+                            $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите ветку");
+                            var result = "";
+                            for (var  i = 0; i < o.length; i++) {
+                                var text = escapeHtml(o[i].name);
+                                var branchEscapedName = o[i].name.replace(/\"/g, "&quot;");
+                                var commit = o[i].commit.sha;
+                                result = result + "<li data-commit=\"" + commit + "\" data-name=\""  + branchEscapedName + "\">" + text +  "</li>";
+                            }
+                            $("#rcommit_branch_select #branchName ul").html(result);
+                        },
+                        "error": function() {
+                            $("#rcommit_preloader").css('display', 'none');
+                            $("#rcommit_error").css('display', 'block');
+                            $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, проверьте настройки репозиториев.");
+                            $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                        }
+                    });
+                }
+            });
+        }, 500);
     }
 
     $scope.$on('reviewgram_show_repo_settings', reviewgramShowRepoSettings)

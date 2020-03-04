@@ -121,6 +121,8 @@ var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, pa
 };
 
 var widgetsToCallbacks = {};
+var repoSettings = {};
+var lastCommit = "";
 
 // Инициализация виджета микрофона
 // TODO: Нормальная работа
@@ -155,3 +157,30 @@ $("body").on("click", ".reviewgram-select-box li", function() {
     $(this).closest(".reviewgram-select-box").find("li").removeClass("selected");
     $(this).addClass("selected");
 });
+
+$("body").on("cut paste keyup", "#branchNameSearch", function() {
+    var a = $(this).val().trim();
+    var elements = $("#branchName ul li");
+    for (var i = 0; i < elements.length; i++) {
+        var element = $(elements[i]);
+        var name = element.attr("data-name");
+        var match = true;
+        if (a.length > 0) {
+            match = (name.indexOf(a) != -1);
+        }
+        if (match) {
+            element.removeClass("hidden").css("display", "block");
+        } else {
+            element.addClass("hidden").css("display", "none");
+        }
+    }
+});
+
+function escapeHtml(unsafe) {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+ }
