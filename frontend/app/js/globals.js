@@ -122,7 +122,11 @@ var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, pa
 
 var widgetsToCallbacks = {};
 var repoSettings = {};
+var branchName = "";
 var lastCommit = "";
+var editedFileName = "";
+var editedFileUrl = "";
+var allowedFileExtensions = [".txt", ".py"];
 
 // Инициализация виджета микрофона
 // TODO: Нормальная работа
@@ -158,23 +162,29 @@ $("body").on("click", ".reviewgram-select-box li", function() {
     $(this).addClass("selected");
 });
 
-$("body").on("cut paste keyup", "#branchNameSearch", function() {
-    var a = $(this).val().trim();
-    var elements = $("#branchName ul li");
-    for (var i = 0; i < elements.length; i++) {
-        var element = $(elements[i]);
-        var name = element.attr("data-name");
-        var match = true;
-        if (a.length > 0) {
-            match = (name.indexOf(a) != -1);
-        }
-        if (match) {
-            element.removeClass("hidden").css("display", "block");
-        } else {
-            element.addClass("hidden").css("display", "none");
+var makeSearchSubstringHandler = function(dependentSelector) {
+    return function() {
+        var a = $(this).val().trim();
+        var elements = $(dependentSelector);
+        for (var i = 0; i < elements.length; i++) {
+            var element = $(elements[i]);
+            var name = element.attr("data-name");
+            var match = true;
+            if (a.length > 0) {
+                match = (name.indexOf(a) != -1);
+            }
+            if (match) {
+                element.removeClass("hidden").css("display", "block");
+            } else {
+                element.addClass("hidden").css("display", "none");
+            }
         }
     }
-});
+};
+
+$("body").on("cut paste keyup", "#branchNameSearch", makeSearchSubstringHandler("#branchName ul li"));
+$("body").on("cut paste keyup", "#commitFileSearch", makeSearchSubstringHandler("#commitFile ul li"));
+
 
 function escapeHtml(unsafe) {
     return unsafe
@@ -184,3 +194,20 @@ function escapeHtml(unsafe) {
          .replace(/"/g, "&quot;")
          .replace(/'/g, "&#039;");
  }
+
+ function b64DecodeUnicode(str) {
+    // Going backwards: from bytestream, to percent-encoding, to original string.
+    return decodeURIComponent(atob(str).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+
+function isMatchesAllowedExtensions(fileName) {
+    var name = fileName.toLowerCase();
+    for (var  i = 0 ; i < allowedFileExtensions.length; i++) {
+        if (name.endsWith(allowedFileExtensions[i])) {
+            return true;
+        }
+    }
+    return false;
+}

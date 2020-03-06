@@ -131,3 +131,23 @@
 .reviewgram_commit_all_modal_window  .mobile_modal_body .btn {
     font-size: 11px;
 }
+
+.reviewgram-microphone-widget-wrapper {
+    margin-top: 15px;
+}
+
+
+#rcommit_branch_select .md_simple_modal_footer .btn,
+#rcommit_file_select .md_simple_modal_footer .btn
+{
+     margin-top: 30px;
+     margin-bottom: 30px;
+     display: block;
+     text-align: center;
+     width: 100%;
+}
+
+#rcommit_file_select .md_simple_modal_footer .btn.cancel {
+    margin-top: 45px;
+    margin-bottom: 45px;    
+}

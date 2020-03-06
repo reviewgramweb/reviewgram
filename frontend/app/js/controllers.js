@@ -4520,8 +4520,165 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       }
   })
   .controller('ReviewgramCommitWindowController', function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager, $modalInstance) {
-      $scope.submitForm = function() {
+      $scope.submitBranchName = function() {
+          var branchEl = $("#branchName ul li.selected");
+          var selectedElement = null;
+          if (branchEl.length != 0) {
+              if (branchEl.css("display") != "none") {
+                  selectedElement = branchEl;
+              }
+          }
+          if (selectedElement == null) {
+                var elements = $("#branchName ul li");
+                // data-commit, data-name;
+                var val = $("#branchNameSearch").val().trim();
+                for (var i = 0; i < elements.length; i++) {
+                    if ($(elements[i]).attr("data-name") == val) {
+                        selectedElement = $(elements[i]);
+                    }
+                }
+          }
+          if (selectedElement != null) {
+              branchName = selectedElement.attr("data-name").replace(/&quot;/, "\"");
+              lastCommit = selectedElement.attr("data-commit");
+              $("#rcommit_preloader").css('display', 'block');
+              $("#rcommit_branch_select").css('display', 'none');
+              $.ajax({
+             	"method": "GET",
+             	"dataType": "json",
+             	"username": repoSettings.user,
+             	"passworrd": repoSettings.password,
+             	"url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/commits/" + lastCommit,
+             	"success": function(o) {
+             		console.log(o);
+             		var error = true;
+                    if ('commit' in o) {
+                        if ('tree' in o['commit']) {
+                            error = false;
+                            $scope.fetchFileList(o['commit']['tree']['url'] + "?recursive=y");
+                        }
+                    }
+                    if (error) {
+                        $("#rcommit_preloader").css('display', 'none');
+                 		$("#rcommit_error").css('display', 'block');
+                 		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                 		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                    }
+             	},
+             	"error": function() {
+             		$("#rcommit_preloader").css('display', 'none');
+             		$("#rcommit_error").css('display', 'block');
+             		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+             		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+             	}
+             });
+          }
+      };
 
+
+      $scope.fetchFileList = function(url) {
+          $.ajax({
+            "method": "GET",
+            "dataType": "json",
+            "username": repoSettings.user,
+            "password": repoSettings.password,
+            "url": url,
+            "success": function(o) {
+                console.log(o);
+                var error = true;
+                if ('tree' in o) {
+                    error = false;
+                    $("#rcommit_preloader").css('display', 'none');
+                    $("#rcommit_file_select").css('display', 'block');
+                    $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите файл для редактирования");
+                    var result = "";
+                    for (var  i = 0; i < o["tree"].length; i++) {
+                        var fileData = o["tree"][i];
+                        var path = fileData["path"];
+                        var url = fileData["url"]
+                        if (isMatchesAllowedExtensions(path) && (fileData["type"] != "tree")) {
+                            var escapedName = path.replace(/\"/g, "&quot;");
+                            var text = escapeHtml(path);
+                            result = result + "<li data-url=\"" + url + "\" data-name=\""  + escapedName + "\">" + text +  "</li>";
+                        }
+                    }
+                    $("#rcommit_file_select #commitFile ul").html(result);
+                }
+                if (error) {
+                    $("#rcommit_preloader").css('display', 'none');
+                    $("#rcommit_error").css('display', 'block');
+                    $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                    $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                }
+            },
+            "error": function() {
+                $("#rcommit_preloader").css('display', 'none');
+                $("#rcommit_error").css('display', 'block');
+                $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+            }
+          });
+      };
+      $scope.submitFileName = function() {
+          var branchEl = $("#commitFile ul li.selected");
+          var selectedElement = null;
+          if (branchEl.length != 0) {
+              if (branchEl.css("display") != "none") {
+                  selectedElement = branchEl;
+              }
+          }
+          if (selectedElement == null) {
+                var elements = $("#commitFile ul li");
+                // data-commit, data-name;
+                var val = $("#commitFileSearch").val().trim();
+                for (var i = 0; i < elements.length; i++) {
+                    if ($(elements[i]).attr("data-name") == val) {
+                        selectedElement = $(elements[i]);
+                    }
+                }
+          }
+          if (selectedElement != null) {
+              editedFileName = selectedElement.attr("data-name").replace(/&quot;/, "\"");
+              editedFileUrl = selectedElement.attr("data-url");
+              $("#rcommit_preloader").css('display', 'block');
+              $("#rcommit_branch_select").css('display', 'none');
+              $("#rcommit_file_select").css('display', 'none');
+          }
+      }
+      $scope.back = function() {
+          if ($("#rcommit_file_select").css('display') != 'none') {
+              $("#rcommit_preloader").css('display', 'block');
+              $("#rcommit_file_select").css('display', 'none');
+              $.ajax({
+                  "method": "GET",
+                  "dataType": "json",
+                  "username": repoSettings.user,
+                  "passworrd": repoSettings.password,
+                  "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+                  "success": function(o) {
+                      console.log(o);
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_branch_select").css('display', 'block');
+                      $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите ветку");
+                      var result = "";
+                      for (var  i = 0; i < o.length; i++) {
+                          var text = escapeHtml(o[i].name);
+                          var branchEscapedName = o[i].name.replace(/\"/g, "&quot;");
+                          var commit = o[i].commit.sha;
+                          result = result + "<li data-commit=\"" + commit + "\" data-name=\""  + branchEscapedName + "\">" + text +  "</li>";
+                      }
+                      $("#rcommit_branch_select #branchName ul").html(result);
+                  },
+                  "error": function() {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_error").css('display', 'block');
+                      $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, проверьте настройки репозиториев.");
+                      $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                  }
+              });
+
+              return;
+          }
       }
   })
   .controller('ChangelogModalController', function ($scope, $modal) {
