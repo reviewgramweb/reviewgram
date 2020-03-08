@@ -4583,7 +4583,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     if (error) {
                         $("#rcommit_preloader").css('display', 'none');
                  		$("#rcommit_error").css('display', 'block');
-                 		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                 		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из ветки репозитория GitHub. Пожалуйста, проверьте настройки репозитория и попробуйте ещё раз");
                         $("#rcommit_error").find(".buttons").css("display", "none");
                  		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     }
@@ -4591,7 +4591,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
              	"error": function() {
              		$("#rcommit_preloader").css('display', 'none');
              		$("#rcommit_error").css('display', 'block');
-             		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+             		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Попробуйте ещё раз");
                     $("#rcommit_error").find(".buttons").css("display", "block");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
              	}
@@ -4631,7 +4631,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                 if (error) {
                     $("#rcommit_preloader").css('display', 'none');
                     $("#rcommit_error").css('display', 'block');
-                    $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                    $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Возможно, ветка изменилась или была удалена. Попробуйте ещё раз.");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     $("#rcommit_error").find(".buttons").css("display", "none");
                 }
@@ -4639,7 +4639,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             "error": function() {
                 $("#rcommit_preloader").css('display', 'none');
                 $("#rcommit_error").css('display', 'block');
-                $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
                 $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                 $("#rcommit_error").find(".buttons").css("display", "block");
             }
@@ -4682,7 +4682,6 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   "password": repoSettings.password,
                   "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
                   "success": function(o) {
-                      console.log(o);
                       $("#rcommit_preloader").css('display', 'none');
                       $("#rcommit_branch_select").css('display', 'block');
                       $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите ветку");
