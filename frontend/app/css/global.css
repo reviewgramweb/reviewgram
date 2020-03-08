@@ -11,6 +11,7 @@
     margin-right: auto;
     height: 300px;
     background: url(/img/preloader.gif) no-repeat center center;
+    filter: brightness(1.4);
 }
 
 
@@ -149,5 +150,5 @@
 
 #rcommit_file_select .md_simple_modal_footer .btn.cancel {
     margin-top: 45px;
-    margin-bottom: 45px;    
+    margin-bottom: 45px;
 }
