@@ -40,8 +40,16 @@ var fetchOrCreateUUID = function(fun) {
 var makeRepeatedRequest = function(options, success)  {
     var ownOptions = options;
     ownOptions["success"] = success;
-    ownOptions["error"] = function() {
-        setTimeout(makeRepeatedRequest.bind(null, options, success), 5000);
+    ownOptions["error"] = function(xhr) {
+         if (xhr.status == 404) {
+             if (typeof options["on404"] == "function") {
+                 options["on404"]();
+             } else {
+                 setTimeout(makeRepeatedRequest.bind(null, options, success), 5000);
+             }
+         } else {
+             setTimeout(makeRepeatedRequest.bind(null, options, success), 5000);
+        }
     };
     $.ajax(ownOptions);
 };
@@ -71,7 +79,7 @@ var startRequestForRepoInformation = function(chatId, fun)  {
 };
 
 // Получение настроек репозитория
-var getRepoSettings = function(chatId, fun)  {
+var getRepoSettings = function(chatId, fun, on404)  {
     fetchOrCreateUUID(function(isNew, uuid, timestamp) {
         var wrapper = (function(fun) {
             makeRepeatedRequest({
@@ -82,6 +90,7 @@ var getRepoSettings = function(chatId, fun)  {
                     "uuid": uuid,
                 },
                 "method": "GET",
+                "on404" : on404
             }, fun);
         }).bind(null, fun);
         if (isNew) {
@@ -94,7 +103,7 @@ var getRepoSettings = function(chatId, fun)  {
 };
 
 // Установка настроек репозитория
-var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, password)  {
+var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, password, on404)  {
     fetchOrCreateUUID(function(isNew, uuid, timestamp) {
         var wrapper = (function(fun) {
             makeRepeatedRequest({
@@ -109,6 +118,7 @@ var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, pa
                     "password": btoa(password)
                 },
                 "method": "POST",
+                "on404": on404
             }, fun);
         }).bind(null, fun);
         if (isNew) {

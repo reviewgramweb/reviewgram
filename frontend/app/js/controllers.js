@@ -1278,6 +1278,14 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             $("#error").css('display', 'none');
             $("#rsettings_preloader").css('display', 'none');
             $("#rsettings_form").css('display', 'block');
+            $("#rsettings_error").css('display', 'none');
+            $(".md_modal_title, .navbar-quick-media-back h4").html("Настройки интеграции с GitHub");
+        }, function() {
+            $("#rsettings_preloader").css('display', 'none');
+            $("#rsettings_form").css('display', 'none');
+            $("#rsettings_error").css('display', 'block');
+            $("#rsettings_error").find(".reviewgram-error").html("Не удалось получить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат, и что вы являетесь членом чата и попробуйте ещё раз.");
+            $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
         });
     };
 
@@ -1328,6 +1336,13 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                         }
                     });
                 }
+            }, function() {
+                $("#rcommit_preloader").css('display', 'none');
+                $("#rcommit_form").css('display', 'none');
+                $("#rcommit_error").css('display', 'block');
+                $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат, и что вы являетесь членом чата и попробуйте ещё раз.");
+                $("#rcommit_error").find(".buttons").css('display', 'none');
+                $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
             });
         }, 500);
     }
@@ -4515,7 +4530,14 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     $modalInstance.dismiss();
                 }
               };
-              setRepoSettings(globalCurrentDialog, fun, repoUserName, repoSameName, user, password);
+              var on404 = function() {
+                    $("#rsettings_preloader").css('display', 'none');
+                    $("#rsettings_form").css('display', 'none');
+                    $("#rsettings_error").css('display', 'block');
+                    $("#rsettings_error").find(".reviewgram-error").html("Не удалось сохранить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат и попробуйте ещё раз.");
+                    $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+              };
+              setRepoSettings(globalCurrentDialog, fun, repoUserName, repoSameName, user, password, on404);
           }
       }
   })
@@ -4562,6 +4584,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                         $("#rcommit_preloader").css('display', 'none');
                  		$("#rcommit_error").css('display', 'block');
                  		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
+                        $("#rcommit_error").find(".buttons").css("display", "none");
                  		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     }
              	},
@@ -4569,7 +4592,8 @@ angular.module('myApp.controllers', ['myApp.i18n'])
              		$("#rcommit_preloader").css('display', 'none');
              		$("#rcommit_error").css('display', 'block');
              		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
-             		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                    $("#rcommit_error").find(".buttons").css("display", "block");
+                    $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
              	}
              });
           }
@@ -4609,6 +4633,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     $("#rcommit_error").css('display', 'block');
                     $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                    $("#rcommit_error").find(".buttons").css("display", "none");
                 }
             },
             "error": function() {
@@ -4616,6 +4641,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                 $("#rcommit_error").css('display', 'block');
                 $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Пожалуйста, проверьте настройки репозиториев и попробуйте ещё раз");
                 $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                $("#rcommit_error").find(".buttons").css("display", "block");
             }
           });
       };
@@ -4653,7 +4679,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   "method": "GET",
                   "dataType": "json",
                   "username": repoSettings.user,
-                  "passworrd": repoSettings.password,
+                  "password": repoSettings.password,
                   "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
                   "success": function(o) {
                       console.log(o);
@@ -4672,8 +4698,9 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   "error": function() {
                       $("#rcommit_preloader").css('display', 'none');
                       $("#rcommit_error").css('display', 'block');
-                      $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, проверьте настройки репозиториев.");
+                      $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток из-за ошибки сети. Пожалуйста, проверьте настройки репозитория.");
                       $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                      $("#rcommit_error").find(".buttons").css("display", "block");
                   }
               });
 
