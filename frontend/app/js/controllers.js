@@ -1298,53 +1298,6 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             scope: $scope,
             windowClass: 'reviewgram_commit_all_modal_window mobile_modal'
         });
-        setTimeout(function() {
-            getRepoSettings(globalCurrentDialog, function(o) {
-                initMicrophoneWidgets();
-                repoSettings = o;
-                if (o.repo_user_name.length == 0 || o.repo_same_name.length == 0 || o.user == 0 || o.password == 0) {
-                    $("#rcommit_preloader").css('display', 'none');
-                    $("#rcommit_error").css('display', 'block');
-                    $("#rcommit_error").find(".reviewgram-error").html("Не указаны параметры репозитория. Пожалуйста, настройте их");
-                    $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                } else {
-                    $.ajax({
-                        "method": "GET",
-                        "dataType": "json",
-                        "username": repoSettings.user,
-                        "passworrd": repoSettings.password,
-                        "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
-                        "success": function(o) {
-                            console.log(o);
-                            $("#rcommit_preloader").css('display', 'none');
-                            $("#rcommit_branch_select").css('display', 'block');
-                            $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите ветку");
-                            var result = "";
-                            for (var  i = 0; i < o.length; i++) {
-                                var text = escapeHtml(o[i].name);
-                                var branchEscapedName = o[i].name.replace(/\"/g, "&quot;");
-                                var commit = o[i].commit.sha;
-                                result = result + "<li data-commit=\"" + commit + "\" data-name=\""  + branchEscapedName + "\">" + text +  "</li>";
-                            }
-                            $("#rcommit_branch_select #branchName ul").html(result);
-                        },
-                        "error": function() {
-                            $("#rcommit_preloader").css('display', 'none');
-                            $("#rcommit_error").css('display', 'block');
-                            $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, проверьте настройки репозиториев.");
-                            $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                        }
-                    });
-                }
-            }, function() {
-                $("#rcommit_preloader").css('display', 'none');
-                $("#rcommit_form").css('display', 'none');
-                $("#rcommit_error").css('display', 'block');
-                $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат, и что вы являетесь членом чата и попробуйте ещё раз.");
-                $("#rcommit_error").find(".buttons").css('display', 'none');
-                $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-            });
-        }, 500);
     }
 
     $scope.$on('reviewgram_show_repo_settings', reviewgramShowRepoSettings)
@@ -4542,6 +4495,42 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       }
   })
   .controller('ReviewgramCommitWindowController', function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager, $modalInstance) {
+      $scope.fetchBranchesList = function() {
+          $.ajax({
+              "method": "GET",
+              "dataType": "json",
+              "username": repoSettings.user,
+              "passworrd": repoSettings.password,
+              "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+              "success": function(o) {
+                  console.log(o);
+                  var result = "";
+                  for (var  i = 0; i < o.length; i++) {
+                      var text = escapeHtml(o[i].name);
+                      var branchEscapedName = o[i].name.replace(/\"/g, "&quot;");
+                      var commit = o[i].commit.sha;
+                      result = result + "<li data-commit=\"" + commit + "\" data-name=\""  + branchEscapedName + "\">" + text +  "</li>";
+                  }
+                  $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите ветку");
+                  $("#rcommit_branch_select #branchName ul").html(result);
+                  if (o.length == 1) {
+                      $("#rcommit_branch_select #branchName ul li:first").addClass('selected');
+                      $scope.submitBranchName();
+                      return;
+                  }
+                  $("#rcommit_preloader").css('display', 'none');
+                  $("#rcommit_branch_select").css('display', 'block');
+              },
+              "error": function() {
+                  $("#rcommit_preloader").css('display', 'none');
+                  $("#rcommit_error").css('display', 'block');
+                  $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, попробуйте ещё раз");
+                  $("#rcommit_error").find(".buttons").css("display", "block");
+                  $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                  $(".btn-repeat").attr("data-invoke", 'fetchBranchesList').removeAttr('data-arg');
+              }
+          });
+      };
       $scope.submitBranchName = function() {
           var branchEl = $("#branchName ul li.selected");
           var selectedElement = null;
@@ -4594,12 +4583,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
              		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Попробуйте ещё раз");
                     $("#rcommit_error").find(".buttons").css("display", "block");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                    $(".btn-repeat").attr("data-invoke", 'submitBranchName').removeAttr('data-arg');
              	}
              });
           }
       };
-
-
       $scope.fetchFileList = function(url) {
           $.ajax({
             "method": "GET",
@@ -4612,10 +4600,9 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                 var error = true;
                 if ('tree' in o) {
                     error = false;
-                    $("#rcommit_preloader").css('display', 'none');
-                    $("#rcommit_file_select").css('display', 'block');
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите файл для редактирования");
                     var result = "";
+                    var cnt =  0;
                     for (var  i = 0; i < o["tree"].length; i++) {
                         var fileData = o["tree"][i];
                         var path = fileData["path"];
@@ -4624,9 +4611,17 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                             var escapedName = path.replace(/\"/g, "&quot;");
                             var text = escapeHtml(path);
                             result = result + "<li data-url=\"" + url + "\" data-name=\""  + escapedName + "\">" + text +  "</li>";
+                            ++cnt;
                         }
                     }
                     $("#rcommit_file_select #commitFile ul").html(result);
+                    if (cnt == 1) {
+                        $("#rcommit_file_select #commitFile ul li:first").addClass('selected');
+                        $scope.submitFileName();
+                        return;
+                    }
+                    $("#rcommit_preloader").css('display', 'none');
+                    $("#rcommit_file_select").css('display', 'block');
                 }
                 if (error) {
                     $("#rcommit_preloader").css('display', 'none');
@@ -4642,6 +4637,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                 $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
                 $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                 $("#rcommit_error").find(".buttons").css("display", "block");
+                $(".btn-repeat").attr("data-invoke", 'fetchFileList').attr('data-arg', url);
             }
           });
       };
@@ -4706,6 +4702,39 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               return;
           }
       }
+      $scope.repeat = function() {
+            $("#rcommit_error").css("display", "none");
+            $("#rcommit_preloader").css("display", "block");
+            $("#rcommit_error").find(".buttons").css("display", "none");
+            var fn   = $(".btn-repeat").attr("data-invoke");
+            var farg = $(".btn-repeat").attr("data-arg");
+            if ((typeof farg != "undefined") && (farg != null)) {
+                $scope[fn](farg);
+            } else {
+                $scope[fn]();
+            }
+      };
+      setTimeout(function() {
+          getRepoSettings(globalCurrentDialog, function(o) {
+              initMicrophoneWidgets();
+              repoSettings = o;
+              if (o.repo_user_name.length == 0 || o.repo_same_name.length == 0 || o.user == 0 || o.password == 0) {
+                  $("#rcommit_preloader").css('display', 'none');
+                  $("#rcommit_error").css('display', 'block');
+                  $("#rcommit_error").find(".reviewgram-error").html("Не указаны параметры репозитория. Пожалуйста, настройте их");
+                  $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+              } else {
+                  $scope.fetchBranchesList();
+              }
+          }, function() {
+              $("#rcommit_preloader").css('display', 'none');
+              $("#rcommit_form").css('display', 'none');
+              $("#rcommit_error").css('display', 'block');
+              $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат, и что вы являетесь членом чата и попробуйте ещё раз.");
+              $("#rcommit_error").find(".buttons").css('display', 'none');
+              $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+          });
+      }, 500);
   })
   .controller('ChangelogModalController', function ($scope, $modal) {
     $scope.currentVersion = Config.App.version
