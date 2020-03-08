@@ -21,12 +21,12 @@
   </div>
 
   <div class="modal-body mobile_modal_body">
-  <div id="rsettings_preloader" class="reviewgram-preloader">
+  <div id="rsettings_preloader" class="reviewgram-preloader suform">
   </div>
-  <div id="rsettings_error" style="display: none;">
+  <div id="rsettings_error" class="subform" style="display: none;">
       <div class="reviewgram-error"></div>
   </div>
-  <div id="rsettings_form" style="display: none;">
+  <div id="rsettings_form" class="subform" style="display: none;">
       <form class="modal_simple_form"   my-vertical-position="0.3">
          <h4>Для задания имени репозитория используется формат вида https://github.com/&lt;имя собственника репо&gt;/&lt;имя репозитория&gt;/</h4>
 
@@ -47,8 +47,8 @@
           <input class="form-control input-lg" type="password" placeholder="Пароль" id="password" name="password"/>
         </div>
         <div class="md_simple_modal_footer">
-          <button class="btn btn-md" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
-          <button class="btn btn-md btn-md-primary" ng-click="submitForm()">Сохранить</button>
+          <button class="btn btn-md" ng-click="submitForm()">Сохранить</button>
+          <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
         </div>
       </form>
   </div>

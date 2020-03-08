@@ -9,17 +9,17 @@
     </div>
   </div>
 
-  <div class="md_modal_body">
-      <div id="rcommit_preloader" class="reviewgram-preloader">
+  <div class="md_modal_body desktop">
+      <div id="rcommit_preloader" class="reviewgram-preloader subform">
       </div>
-      <div id="rcommit_error" style="display: none;">
+      <div id="rcommit_error" class="subform" style="display: none;">
           <div class="reviewgram-error"></div>
           <div class="md_simple_modal_footer buttons">
             <button class="btn btn-md btn-md-primary" ng-click="repeat()">Повторить</button>
             <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
           </div>
       </div>
-      <div id="rcommit_branch_select" style="display: none;">
+      <div id="rcommit_branch_select" class="subform" style="display: none;">
           <form class="modal_simple_form" >
             <div class="reviewgram-error" id="branch_select_error" style="dispay: none;" >
             </div>
@@ -44,32 +44,32 @@
             <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
           </div>
       </div>
-  </div>
-  <div id="rcommit_file_select"  style="display: none;">
-      <form class="modal_simple_form" >
-        <div class="reviewgram-error" id="commit_file_select_error" style="dispay: none;" >
-        </div>
-        <div class="reviewgram-microphone-widget-wrapper">
-            <div class="reviewgram-microphone-widget" data-for="commitFileSearch"></div>
-        </div>
-        <div class="md-input-group">
-          <label class="md-input-label">Имя файла</label>
-          <input class="md-input" my-focused type="text" name="commitFileSearch" id="commitFileSearch"  text="" required="required" />
-        </div>
+      <div id="rcommit_file_select" class="subform"  style="display: none;">
+          <form class="modal_simple_form" >
+            <div class="reviewgram-error" id="commit_file_select_error" style="dispay: none;" >
+            </div>
+            <div class="reviewgram-microphone-widget-wrapper">
+                <div class="reviewgram-microphone-widget" data-for="commitFileSearch"></div>
+            </div>
+            <div class="md-input-group">
+              <label class="md-input-label">Имя файла</label>
+              <input class="md-input" my-focused type="text" name="commitFileSearch" id="commitFileSearch"  text="" required="required" />
+            </div>
 
-        <div>
-          Выберите файл:
-          <div class="reviewgram-select-box" id="commitFile">
-              <ul></ul>
+            <div>
+              Выберите файл:
+              <div class="reviewgram-select-box" id="commitFile">
+                  <ul></ul>
+              </div>
+            </div>
+          </form>
+
+          <div class="md_simple_modal_footer">
+            <button class="btn btn-md btn-md-primary" ng-click="submitFileName()">Выбрать файл</button>
+            <button class="btn btn-md btn-back" ng-click="back()">Назад</button>
+
+            <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
           </div>
-        </div>
-      </form>
-
-      <div class="md_simple_modal_footer">
-        <button class="btn btn-md btn-md-primary" ng-click="submitFileName()">Выбрать файл</button>
-        <button class="btn btn-md btn-back" ng-click="back()">Назад</button>
-
-        <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
       </div>
   </div>
 </div>

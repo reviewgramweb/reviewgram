@@ -80,7 +80,7 @@
     font-weight: normal;
     font-size: 11px;
     word-break: break-all;
-    background-color: rgb(220, 220, 220);
+    background-color: #E9F0EC;
     color: rgb(73,194,134);
     cursor: pointer;
     content: "\25CF"
@@ -93,7 +93,7 @@
     font-weight: normal;
     font-size: 11px;
     word-break: break-all;
-    background-color: rgb(220, 220, 220);
+    background-color: #E9F0EC;
     color: rgb(73,194,134);
     max-width: 400px;
     cursor: pointer;
@@ -135,20 +135,65 @@
 
 .reviewgram-microphone-widget-wrapper {
     margin-top: 15px;
+    margin-bottom: 10px;
 }
 
+.subform .md-input-label {
+    transform: none !important;
+    -webkit-transform: none !important;
+}
 
-#rcommit_branch_select .md_simple_modal_footer .btn,
-#rcommit_file_select .md_simple_modal_footer .btn
-{
+.mobile_modal_body .subform .md_simple_modal_footer {
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+.subform .md_simple_modal_footer .btn {
      margin-top: 30px;
      margin-bottom: 30px;
      display: block;
      text-align: center;
+}
+
+.mobile_modal_body .subform .md_simple_modal_footer .btn {
      width: 100%;
 }
 
-#rcommit_file_select .md_simple_modal_footer .btn.cancel {
+
+.desktop .subform .md_simple_modal_footer .btn {
+     margin-left: auto;
+     margin-right: auto;
+}
+
+.mobile_modal_body .subform .md_simple_modal_footer .btn {
+    margin-left: 0px;
+}
+
+.subform .md_simple_modal_footer .btn.cancel {
     margin-top: 45px;
     margin-bottom: 45px;
+}
+
+
+.mobile_modal_body .subform .modal_simple_form {
+    margin-top: 15px !important;
+}
+
+
+.reviewgram_commit_all_modal_window div .btn.btn-md,
+.reviewgram_repo_settings_all_modal_window div .btn.btn-md,
+.reviewgram_commit_all_modal_window div .btn.btn-md:hover,
+.reviewgram_repo_settings_all_modal_window div .btn.btn-md:hover
+{
+    background-color: #41BF80;
+    color: #FFFFFF;
+}
+
+.reviewgram_commit_all_modal_window div .btn.btn-md.cancel,
+.reviewgram_repo_settings_all_modal_window div .btn.btn-md.cancel,
+.reviewgram_commit_all_modal_window div .btn.btn-md.cancel:hover,
+.reviewgram_repo_settings_all_modal_window div .btn.btn-md.cancel:hover
+{
+    background-color: #BF4F41;
+    color: #FFFFFF;
 }

@@ -9,13 +9,13 @@
     </div>
   </div>
 
-  <div class="md_modal_body">
-      <div id="rsettings_preloader" class="reviewgram-preloader">
+  <div class="md_modal_body desktop">
+      <div id="rsettings_preloader" class="reviewgram-preloader subform">
       </div>
-      <div id="rsettings_error" style="display: none;">
+      <div id="rsettings_error" class="subform" style="display: none;">
           <div class="reviewgram-error"></div>
       </div>
-      <div id="rsettings_form" style="display: none;">
+      <div id="rsettings_form" class="subform" style="display: none;">
           <form class="modal_simple_form" >
 
             <h4>Для задания имени репозитория используется формат вида https://github.com/&lt;имя собственника репозитория&gt;/&lt;имя репозитория&gt;/</h4>
@@ -47,8 +47,8 @@
           </form>
 
           <div class="md_simple_modal_footer">
-            <button class="btn btn-md" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
-            <button class="btn btn-md btn-md-primary" ng-click="submitForm()">Сохранить</button>
+            <button class="btn btn-md" ng-click="submitForm()">Сохранить</button>
+            <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
           </div>
       </div>
   </div>
