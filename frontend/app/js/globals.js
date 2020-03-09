@@ -4,6 +4,22 @@ var requestPeerID = null;
 var tokenLiveCountMinutes = 150;
 var secondsInMinute = 60;
 
+function makeBasicAuth(user, password) {
+  var tok = user + ':' + password;
+  var hash = btoa(tok);
+  return "Basic " + hash;
+}
+
+var originalAjax = $.ajax
+$.ajax = function(options) {
+    if (('username' in options) && ('password' in options)) {
+        options['beforeSend'] = function (xhr) {
+            xhr.setRequestHeader('Authorization', makeBasicAuth(options['username'], options['password']));
+        }
+    }
+    originalAjax(options);
+};
+
 // Функция для генерации уникального UUID
 var largeUuidv4 = function() {
   var result =  ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -82,6 +98,10 @@ var startRequestForRepoInformation = function(chatId, fun)  {
 var getRepoSettings = function(chatId, fun, on404)  {
     fetchOrCreateUUID(function(isNew, uuid, timestamp) {
         var wrapper = (function(fun) {
+            var wrapInner = function(o) {
+                o.password = atob(o.password);
+                fun(o);  
+            };
             makeRepeatedRequest({
                 "url": "/reviewgram/get_repo_settings/",
                 "dataType": "json",
@@ -91,7 +111,7 @@ var getRepoSettings = function(chatId, fun, on404)  {
                 },
                 "method": "GET",
                 "on404" : on404
-            }, fun);
+            }, wrapInner);
         }).bind(null, fun);
         if (isNew) {
             var text = btoa(uuid);

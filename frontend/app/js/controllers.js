@@ -4500,7 +4500,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               "method": "GET",
               "dataType": "json",
               "username": repoSettings.user,
-              "passworrd": repoSettings.password,
+              "password": repoSettings.password,
               "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
               "success": function(o) {
                   console.log(o);
@@ -4558,7 +4558,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
              	"method": "GET",
              	"dataType": "json",
              	"username": repoSettings.user,
-             	"passworrd": repoSettings.password,
+             	"password": repoSettings.password,
              	"url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/commits/" + lastCommit,
              	"success": function(o) {
              		console.log(o);
