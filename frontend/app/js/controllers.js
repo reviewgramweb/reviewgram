@@ -4665,6 +4665,50 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               $("#rcommit_preloader").css('display', 'block');
               $("#rcommit_branch_select").css('display', 'none');
               $("#rcommit_file_select").css('display', 'none');
+              $.ajax({
+                "method": "GET",
+                "dataType": "json",
+                "username": repoSettings.user,
+                "password": repoSettings.password,
+                "url": editedFileUrl,
+                "success": function(o) {
+                    var error = true;
+                    if (('content' in o) && ('encoding' in o)) {
+                        error = false;
+                        $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите промежуток для редактирования");
+                        if (o['encoding'] == 'base64') {
+                            editedFileContent = b64DecodeUnicode(o['content']);
+                        } else {
+                            editedFileContent = o['content']
+                        }
+                        $("#rcommit_preloader").css('display', 'none');
+                        $("#rcommit_range_select").css('display', 'block');
+                        $("#rcommit_range_select .editor-wrapper").html("");
+                        $("#rcommit_range_select .editor-wrapper").html("<div id=\"editor_range_select\"></div>");
+                        $("#rcommit_range_select .editor-wrapper #editor_range_select").html(escapeHtml(editedFileContent));
+                        aceEditorForRangeSelect = ace.edit("editor_range_select");
+                        aceEditorForRangeSelect.setTheme("ace/theme/solarized_dark");
+                        aceEditorForRangeSelect.session.setMode(fileNameToAceMode(editedFileName));
+                        aceEditorForRangeSelect.setReadOnly(true);
+                        aceEditorForRangeSelect.setValue(editedFileContent);
+                    }
+                    if (error) {
+                        $("#rcommit_preloader").css('display', 'none');
+                        $("#rcommit_error").css('display', 'block');
+                        $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла. Возможно, файл изменился или был удалён. Попробуйте ещё раз.");
+                        $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                        $("#rcommit_error").find(".buttons").css("display", "none");
+                    }
+                },
+                "error": function() {
+                    $("#rcommit_preloader").css('display', 'none');
+                    $("#rcommit_error").css('display', 'block');
+                    $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
+                    $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                    $("#rcommit_error").find(".buttons").css("display", "block");
+                    $(".btn-repeat").attr("data-invoke", 'submitFileName').removeAttr('data-arg');
+                }
+              });
           }
       }
       $scope.back = function() {
@@ -4699,6 +4743,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   }
               });
 
+              return;
+          }
+          if ($("#rcommit_range_select").css('display') != 'none') {
+              $("#rcommit_file_select").css('display', 'block');
+              $("#rcommit_range_select").css('display', 'none');
               return;
           }
       }

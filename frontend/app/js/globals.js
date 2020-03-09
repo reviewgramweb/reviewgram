@@ -136,7 +136,26 @@ var branchName = "";
 var lastCommit = "";
 var editedFileName = "";
 var editedFileUrl = "";
+var editedFileContent = "";
+var rangeStart = 0;
+var rangeEnd = 0;
+var aceEditorForRangeSelect = null;
+var aceEditorMain = null;
 var allowedFileExtensions = [".txt", ".py"];
+
+var namesToModes = {".py": "ace/mode/python"};
+
+var fileNameToAceMode = function(fileName) {
+    var name = fileName.toLowerCase();
+    for (var  key in namesToModes) {
+        if (namesToModes.hasOwnProperty(key)) {
+            if (name.endsWith(key)) {
+                return namesToModes[key];
+            }
+        }
+    }
+    return "ace/mode/plain_text";
+};
 
 // Инициализация виджета микрофона
 // TODO: Нормальная работа

@@ -76,5 +76,20 @@
         </div>
       </form>
   </div>
+  <div id="rcommit_range_select" class="subform" style="display: none;">
+      <div class="md_simple_modal_footer">
+        <button class="btn btn-md btn-md-primary" ng-click="submitRange()">Продолжить</button>
+        <button class="btn btn-md btn-back" ng-click="back()">Назад</button>
+
+        <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
+      </div>
+      <div>
+          Нажмите на номере строки, чтобы отметить начало промежутка, затем на другом номере, чтобы отметить конец.
+          <br />
+          Одновременно можно выбрать не более 10 строк.
+      </div>
+      <div class="editor-wrapper">
+      </div>
+  </div>
   </div>
 </div>
