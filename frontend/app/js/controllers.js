@@ -4742,6 +4742,18 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                }
                var strings = editedFileContent.split(separator).slice(editorRangeSelectStart - 1, rangeEnd).join("\n");
                editorEditedPart = strings;
+               $("#rcommit_range_select").css('display', 'none');
+               $("#rcommit_edit").css('display', 'block');
+               $("#rcommit_edit .editor-wrapper").html("");
+               $("#rcommit_edit .editor-wrapper").html("<div id=\"editor_edit\"></div>");
+               $("#rcommit_edit .editor-wrapper #editor_edit").html(escapeHtml(editorEditedPart));
+               $(".md_modal_title, .navbar-quick-media-back h4").html("");
+               aceEditorMain = ace.edit("editor_edit");
+               aceEditorMain.setOption("firstLineNumber", editorRangeSelectStart);
+               aceEditorMain.setTheme("ace/theme/solarized_dark");
+               aceEditorMain.session.setMode(fileNameToAceMode(editedFileName));
+               aceEditorMain.setValue(editorEditedPart);
+               $(window).trigger('resize');
            }
       };
       $scope.back = function() {
@@ -4779,9 +4791,16 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               return;
           }
           if ($("#rcommit_range_select").css('display') != 'none') {
+              $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите файл для редактирования");
               $("#rcommit_file_select").css('display', 'block');
               $("#rcommit_range_select").css('display', 'none');
               return;
+          }
+          if ($("#rcommit_edit").css('display') != 'none') {
+              $("#rcommit_range_select").css('display', 'block');
+              $("#rcommit_edit").css('display', 'none');
+              $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите промежуток для редактирования");
+              $(window).trigger('resize');
           }
       }
       $scope.repeat = function() {
