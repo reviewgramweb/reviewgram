@@ -43,8 +43,11 @@
         <div class="form-group">
           <input class="form-control input-lg" type="text" placeholder="Логин пользователя" id="user" name="user"/>
         </div>
+        <div class="personal_access_token_label">
+            Укажите ниже Personal Access Token с доступом к репозиториям. Как сгенерировать данный токен можно посмотреть в <a href="https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line">справке GitHub</a>.
+        </div>
         <div class="form-group">
-          <input class="form-control input-lg" type="password" placeholder="Пароль" id="password" name="password"/>
+          <input class="form-control input-lg" type="password" placeholder="Токен" id="password" name="password"/>
         </div>
         <div class="md_simple_modal_footer">
           <button class="btn btn-md" ng-click="submitForm()">Сохранить</button>

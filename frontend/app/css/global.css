@@ -225,3 +225,8 @@
 .desktop #editor_range_select {
     width: 580px;
 }
+
+.personal_access_token_label {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
