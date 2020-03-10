@@ -4691,6 +4691,9 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                         aceEditorForRangeSelect.session.setMode(fileNameToAceMode(editedFileName));
                         aceEditorForRangeSelect.setReadOnly(true);
                         aceEditorForRangeSelect.setValue(editedFileContent);
+                        editorRangeSelectStart = null;
+                        editorRangeSelectEnd = null;
+                        editorRangeSelectLastClick = null;
                     }
                     if (error) {
                         $("#rcommit_preloader").css('display', 'none');
@@ -4710,7 +4713,27 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                 }
               });
           }
-      }
+      };
+      $scope.submitRange = function() {
+           if (editorRangeSelectStart != null) {
+               var rangeEnd = editorRangeSelectEnd;
+               if (rangeEnd === null) {
+                   rangeEnd =  editorRangeSelectStart;
+               }
+               var separator = null;
+               if (editedFileContent.indexOf("\r\n") != -1) {
+                   separator = "\r\n";
+               } else {
+                   if (editedFileContent.indexOf("\r") != -1) {
+                       separator = "\r";
+                   } else {
+                       separator = "\n";
+                   }
+               }
+               var strings = editedFileContent.split(separator).slice(editorRangeSelectStart - 1, rangeEnd).join("\n");
+               editorEditedPart = strings;
+           }
+      };
       $scope.back = function() {
           if ($("#rcommit_file_select").css('display') != 'none') {
               $("#rcommit_preloader").css('display', 'block');

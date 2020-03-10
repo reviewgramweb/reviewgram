@@ -100,7 +100,7 @@ var getRepoSettings = function(chatId, fun, on404)  {
         var wrapper = (function(fun) {
             var wrapInner = function(o) {
                 o.password = atob(o.password);
-                fun(o);  
+                fun(o);
             };
             makeRepeatedRequest({
                 "url": "/reviewgram/get_repo_settings/",
@@ -162,7 +162,11 @@ var rangeEnd = 0;
 var aceEditorForRangeSelect = null;
 var aceEditorMain = null;
 var allowedFileExtensions = [".txt", ".py"];
-
+var editorRangeSelectStart = null;
+var editorRangeSelectEnd = null;
+var editorRangeSelectLastClick = null;
+var lineSelectLimit = 10;
+var editorEditedPart = "";
 var namesToModes = {".py": "ace/mode/python"};
 
 var fileNameToAceMode = function(fileName) {
@@ -260,3 +264,57 @@ function isMatchesAllowedExtensions(fileName) {
     }
     return false;
 }
+
+
+function selectAceGutterRange(parent, start, end) {
+    var list = $(parent + " .ace_gutter-cell");
+    for (var i = 0; i < list.length; i++) {
+        var e  = $(list[i]);
+        var no = parseInt(e.text());
+        if (no >= start && no <= end) {
+            e.addClass("selected");
+        } else {
+            e.removeClass("selected");
+        }
+    }
+}
+
+$("body").on("click", "#editor_range_select .ace_gutter-cell", function() {
+    var currentLineNo = parseInt($(this).text());
+    if (editorRangeSelectStart == null) {
+        editorRangeSelectStart = currentLineNo;
+        $(this).addClass("selected");
+    } else {
+        if (Math.abs(currentLineNo - editorRangeSelectLastClick) < lineSelectLimit) {
+            if (currentLineNo < editorRangeSelectLastClick) {
+                editorRangeSelectStart = currentLineNo;
+                editorRangeSelectEnd = editorRangeSelectLastClick;
+            } else {
+                editorRangeSelectStart = editorRangeSelectLastClick;
+                editorRangeSelectEnd = currentLineNo;
+            }
+        } else {
+            if (currentLineNo < editorRangeSelectLastClick) {
+                editorRangeSelectStart = currentLineNo;
+                editorRangeSelectEnd = currentLineNo + lineSelectLimit - 1;
+            } else {
+                editorRangeSelectStart = currentLineNo - lineSelectLimit + 1;
+                editorRangeSelectEnd = currentLineNo;
+            }
+        }
+        selectAceGutterRange("#editor_range_select", editorRangeSelectStart, editorRangeSelectEnd);
+    }
+    editorRangeSelectLastClick = currentLineNo;
+});
+
+setInterval(function() {
+    if ($("#editor_range_select").length != 0) {
+        if (editorRangeSelectStart != null) {
+            if (editorRangeSelectEnd != null) {
+                selectAceGutterRange("#editor_range_select", editorRangeSelectStart, editorRangeSelectEnd);
+            } else {
+                selectAceGutterRange("#editor_range_select", editorRangeSelectStart, editorRangeSelectStart);
+            }
+        }
+    }
+}, 300);

@@ -230,3 +230,7 @@
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
+.ace_gutter-cell.selected {
+    background-color: rebeccapurple;
+}
