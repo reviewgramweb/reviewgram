@@ -4520,6 +4520,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   }
                   $("#rcommit_preloader").css('display', 'none');
                   $("#rcommit_branch_select").css('display', 'block');
+                  $(window).trigger('resize');
               },
               "error": function() {
                   $("#rcommit_preloader").css('display', 'none');
@@ -4528,6 +4529,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   $("#rcommit_error").find(".buttons").css("display", "block");
                   $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                   $(".btn-repeat").attr("data-invoke", 'fetchBranchesList').removeAttr('data-arg');
+                  $(window).trigger('resize');
               }
           });
       };
@@ -4575,6 +4577,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                  		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из ветки репозитория GitHub. Пожалуйста, проверьте настройки репозитория и попробуйте ещё раз");
                         $("#rcommit_error").find(".buttons").css("display", "none");
                  		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                        $(window).trigger('resize');
                     }
              	},
              	"error": function() {
@@ -4584,6 +4587,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     $("#rcommit_error").find(".buttons").css("display", "block");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     $(".btn-repeat").attr("data-invoke", 'submitBranchName').removeAttr('data-arg');
+                    $(window).trigger('resize');
              	}
              });
           }
@@ -4622,6 +4626,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     }
                     $("#rcommit_preloader").css('display', 'none');
                     $("#rcommit_file_select").css('display', 'block');
+                    $(window).trigger('resize');
                 }
                 if (error) {
                     $("#rcommit_preloader").css('display', 'none');
@@ -4629,6 +4634,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Возможно, ветка изменилась или была удалена. Попробуйте ещё раз.");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     $("#rcommit_error").find(".buttons").css("display", "none");
+                    $(window).trigger('resize');
                 }
             },
             "error": function() {
@@ -4638,6 +4644,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                 $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                 $("#rcommit_error").find(".buttons").css("display", "block");
                 $(".btn-repeat").attr("data-invoke", 'fetchFileList').attr('data-arg', url);
+                $(window).trigger('resize');
             }
           });
       };
@@ -4694,6 +4701,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                         editorRangeSelectStart = null;
                         editorRangeSelectEnd = null;
                         editorRangeSelectLastClick = null;
+                        $(window).trigger('resize');
                     }
                     if (error) {
                         $("#rcommit_preloader").css('display', 'none');
@@ -4701,6 +4709,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                         $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла. Возможно, файл изменился или был удалён. Попробуйте ещё раз.");
                         $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                         $("#rcommit_error").find(".buttons").css("display", "none");
+                        $(window).trigger('resize');
                     }
                 },
                 "error": function() {
@@ -4710,6 +4719,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     $("#rcommit_error").find(".buttons").css("display", "block");
                     $(".btn-repeat").attr("data-invoke", 'submitFileName').removeAttr('data-arg');
+                    $(window).trigger('resize');
                 }
               });
           }
