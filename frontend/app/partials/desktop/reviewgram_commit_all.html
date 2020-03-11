@@ -109,8 +109,8 @@
                   Выберите команду:
                   <div class="reviewgram-select-box" id="editCommand">
                       <ul>
-                          <li class="add-line-to-begin">Добавить строку в конец</li>
-                          <li class="add-line-to-end">Добавить строку в начало</li>
+                          <li class="add-line-to-begin">Добавить строку в начало</li>
+                          <li class="add-line-to-end">Добавить строку в конец</li>
                           <li class="insert-line">Вставить строку в позиции курсора</li>
                           <li class="delete-line">Удалить строку в позиции курсора</li>
                           <li class="replace-line">Заменить строку в позиции курсора</li>
@@ -126,7 +126,7 @@
               </div>
           </form>
           <div class="md_simple_modal_footer">
-            <button class="btn btn-md apply">Применить команду</button>
+            <button class="btn btn-md apply" ng-click="applyEditCommand()">Применить команду</button>
             <button class="btn btn-md btn-md-primary" ng-click="submitEdit()">Продолжить</button>
             <button class="btn btn-md btn-back" ng-click="back()">Назад</button>
 

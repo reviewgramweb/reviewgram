@@ -168,6 +168,7 @@ var editorRangeSelectLastClick = null;
 var lineSelectLimit = 10;
 var editorEditedPart = "";
 var namesToModes = {".py": "ace/mode/python"};
+var lineSeparator = "";
 
 var fileNameToAceMode = function(fileName) {
     var name = fileName.toLowerCase();

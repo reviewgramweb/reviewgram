@@ -4740,6 +4740,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                        separator = "\n";
                    }
                }
+               lineSeparator = separator;
                var strings = editedFileContent.split(separator).slice(editorRangeSelectStart - 1, rangeEnd).join("\n");
                editorEditedPart = strings;
                $("#rcommit_range_select").css('display', 'none');
@@ -4755,6 +4756,36 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                aceEditorMain.setValue(editorEditedPart);
                $(window).trigger('resize');
            }
+      };
+      $scope.applyEditCommand = function() {
+          var e = $("#editCommand li.selected");
+          if (e.length != 0) {
+              if (e.hasClass("add-line-to-begin")) {
+                  aceEditorMain.session.insert({"row": 0, "column": 0}, $("#commandLine").val() + lineSeparator);
+                  return;
+              }
+              if (e.hasClass("add-line-to-end")) {
+                  var cnt  = aceEditorMain.session.doc.getAllLines().length;
+                  aceEditorMain.session.insert({"row": cnt, "column": 0}, lineSeparator  + $("#commandLine").val());
+                  return;
+              }
+              if (e.hasClass("insert-line")) {
+                  var pos = aceEditorMain.getCursorPosition();
+                  aceEditorMain.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + lineSeparator);
+                  return;
+              }
+              if (e.hasClass("delete-line")) {
+                  var pos = aceEditorMain.getCursorPosition();
+                  aceEditorMain.session.doc.removeLines(pos.row, pos.row);
+                  return;
+              }
+              if (e.hasClass("replace-line")) {
+                  var pos = aceEditorMain.getCursorPosition();
+                  aceEditorMain.session.doc.removeLines(pos.row, pos.row);
+                  aceEditorMain.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + lineSeparator);
+                  return;
+              }
+          }
       };
       $scope.back = function() {
           if ($("#rcommit_file_select").css('display') != 'none') {
