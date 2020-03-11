@@ -137,5 +137,25 @@
         <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
       </div>
   </div>
+  <div id="rcommit_confirm" class="subform" style="display: none;">
+      <div id="rcommit_confirm_error">
+          <div class="reviewgram-error">
+              Ошибка! Репозиторий пока заблокирован для правки
+          </div>
+          <div class="md_simple_modal_footer">
+            <button class="btn btn-md btn-back" ng-click="backToBranchSelect()">Назад</button>
+
+            <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
+          </div>
+      </div>
+      <div id="rcommit_confirm_apply">
+          <div class="md_simple_modal_footer">
+            <button class="btn btn-md jumbo" ng-click="submitToGithub">Отправить</button>
+            <button class="btn btn-md btn-back" ng-click="back()">Назад</button>
+
+            <button class="btn btn-md cancel" ng-click="$dismiss()" my-i18n="modal_cancel"></button>
+          </div>
+       </div>
+  </div>
   </div>
 </div>

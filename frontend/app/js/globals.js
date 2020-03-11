@@ -156,6 +156,7 @@ var branchName = "";
 var lastCommit = "";
 var editedFileName = "";
 var editedFileUrl = "";
+var editedFileSha = "";
 var editedFileContent = "";
 var rangeStart = 0;
 var rangeEnd = 0;
@@ -169,6 +170,7 @@ var lineSelectLimit = 10;
 var editorEditedPart = "";
 var namesToModes = {".py": "ace/mode/python"};
 var lineSeparator = "";
+var resultFileContent = "";
 
 var fileNameToAceMode = function(fileName) {
     var name = fileName.toLowerCase();

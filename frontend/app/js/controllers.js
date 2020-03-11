@@ -4610,11 +4610,12 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     for (var  i = 0; i < o["tree"].length; i++) {
                         var fileData = o["tree"][i];
                         var path = fileData["path"];
-                        var url = fileData["url"]
+                        var url = fileData["url"];
+                        var sha =  fileData["sha"];
                         if (isMatchesAllowedExtensions(path) && (fileData["type"] != "tree")) {
                             var escapedName = path.replace(/\"/g, "&quot;");
                             var text = escapeHtml(path);
-                            result = result + "<li data-url=\"" + url + "\" data-name=\""  + escapedName + "\">" + text +  "</li>";
+                            result = result + "<li data-sha=\"" + sha + "\" data-url=\"" + url + "\" data-name=\""  + escapedName + "\">" + text +  "</li>";
                             ++cnt;
                         }
                     }
@@ -4669,6 +4670,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           if (selectedElement != null) {
               editedFileName = selectedElement.attr("data-name").replace(/&quot;/, "\"");
               editedFileUrl = selectedElement.attr("data-url");
+              editedFileSha = selectedElement.attr("data-sha");
               $("#rcommit_preloader").css('display', 'block');
               $("#rcommit_branch_select").css('display', 'none');
               $("#rcommit_file_select").css('display', 'none');
@@ -4787,6 +4789,24 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               }
           }
       };
+      $scope.submitEdit = function() {
+          var strings = editedFileContent.split(lineSeparator);
+          var begin = strings.slice(0, editorRangeSelectStart - 1);
+          var rangeEnd = editorRangeSelectEnd;
+          if (rangeEnd == null) {
+              rangeEnd = editorRangeSelectStart;
+          }
+          var end = strings.slice(rangeEnd);
+          var middle = aceEditorMain.session.doc.getAllLines();
+          var content = begin.concat(middle).concat(end);
+          resultFileContent = content.join(lineSeparator);
+          $("#rcommit_edit").css('display', 'none');
+          $("#rcommit_confirm").css('display', 'block');
+          $("#rcommit_confirm_apply").css('display', 'block');
+          $("#rcommit_confirm_error").css('display', 'none');
+          $(".md_modal_title, .navbar-quick-media-back h4").html("Подтверждение");
+          $(window).trigger('resize');
+      };
       $scope.back = function() {
           if ($("#rcommit_file_select").css('display') != 'none') {
               $("#rcommit_preloader").css('display', 'block');
@@ -4825,12 +4845,19 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите файл для редактирования");
               $("#rcommit_file_select").css('display', 'block');
               $("#rcommit_range_select").css('display', 'none');
+              $(window).trigger('resize');
               return;
           }
           if ($("#rcommit_edit").css('display') != 'none') {
               $("#rcommit_range_select").css('display', 'block');
               $("#rcommit_edit").css('display', 'none');
               $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите промежуток для редактирования");
+              $(window).trigger('resize');
+          }
+          if ($("#rcommit_confirm").css('display') != 'none') {
+              $("#rcommit_edit").css('display', 'block');
+              $("#rcommit_confirm").css('display', 'none');
+              $(".md_modal_title, .navbar-quick-media-back h4").html("");
               $(window).trigger('resize');
           }
       }
@@ -4845,6 +4872,11 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             } else {
                 $scope[fn]();
             }
+      };
+      $scope.backToBranchSelect = function() {
+          $("#rcommit_preloader").css('display', 'block');
+          $("#rcommit_confirm").css('display', 'none');
+          $scope.fetchBranchesList();
       };
       setTimeout(function() {
           getRepoSettings(globalCurrentDialog, function(o) {
