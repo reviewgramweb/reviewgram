@@ -291,7 +291,7 @@ def try_lock():
         lockTime = int(os.getenv("LOCK_TIME"))
         timestamp = int(time.time())
         with con:
-            row = select_and_fetch_one(con, "SELECT * FROM `repo_locks` WHERE `CHAT_ID` = %s AND " + str(timestamp) + " - TSTAMP <= " + str(lockTime) + " LIMIT 1", [chatId])
+            row = select_and_fetch_one(con, "SELECT * FROM `repo_locks` WHERE `TOKEN` <> %s AND `CHAT_ID` = %s AND " + str(timestamp) + " - TSTAMP <= " + str(lockTime) + " LIMIT 1", [uuid, chatId])
             if (row is not None):
                 return jsonify({"locked": True})
             else:
