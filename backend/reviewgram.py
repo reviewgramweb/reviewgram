@@ -104,6 +104,15 @@ def  insert_or_update_token_to_chat(con, chatId, uuid):
     else:
         execute_update(con, "INSERT INTO `token_to_chat_id`(TOKEN, CHAT_ID, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [uuid, chatId])
 
+
+def  insert_or_update_repo_lock(con, chatId, uuid):
+    query = "SELECT COUNT(*) AS CNT FROM `repo_locks` WHERE `CHAT_ID` = %s"
+    countRows = select_and_fetch_first_column(con, query, [chatId])
+    if (countRows > 0):
+        execute_update(con, "UPDATE `repo_locks` SET TSTAMP = UNIX_TIMESTAMP(NOW()), TOKEN = %s WHERE CHAT_ID = %s", [uuid, chatId])
+    else:
+        execute_update(con, "INSERT INTO `repo_locks`(TOKEN, CHAT_ID, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [uuid, chatId])
+
 # Находится ли пользователь в чате и все связанные с этим проверки
 def is_user_in_chat(uuid, chatId):
     try:
@@ -270,6 +279,24 @@ def set_repo_settings():
             else:
                 execute_update(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD) VALUES (%s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password])
             return jsonify({"error": ""})
+    else:
+        abort(404)
+
+@app.route('/reviewgram/try_lock/')
+def try_lock():
+    chatId = request.values.get("chatId")
+    uuid = request.values.get("uuid")
+    if (is_user_in_chat(uuid, chatId)):
+        con = connect_to_db()
+        lockTime = int(os.getenv("LOCK_TIME"))
+        timestamp = int(time.time())
+        with con:
+            row = select_and_fetch_one(con, "SELECT * FROM `repo_locks` WHERE `CHAT_ID` = %s AND " + str(timestamp) + " - TSTAMP <= " + str(lockTime) + " LIMIT 1", [chatId])
+            if (row is not None):
+                return jsonify({"locked": True})
+            else:
+                insert_or_update_repo_lock(con, chatId, uuid)
+                return jsonify({"locked": False})
     else:
         abort(404)
 
