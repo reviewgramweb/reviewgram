@@ -4494,7 +4494,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           }
       }
   })
-  .controller('ReviewgramCommitWindowController', function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager, $modalInstance) {
+  .controller('ReviewgramCommitWindowController', function($rootScope, $scope, $modal, AppUsersManager, AppPeersManager, MtpApiManager, $modalInstance) {
       $scope.fetchBranchesList = function() {
           $.ajax({
               "method": "GET",
@@ -4806,6 +4806,172 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           $("#rcommit_confirm_error").css('display', 'none');
           $(".md_modal_title, .navbar-quick-media-back h4").html("Подтверждение");
           $(window).trigger('resize');
+      };
+      $scope.submitConfirmation = function() {
+          $("#rcommit_confirm").css('display', 'none');
+          $("#rcommit_preloader").css('display', 'block');
+          $scope.checkIfCommitInRepoIsLatest(1);
+      };
+      $scope.checkIfCommitInRepoIsLatest = function(step) {
+          $.ajax({
+              "method": "GET",
+              "dataType": "json",
+              "username": repoSettings.user,
+              "password": repoSettings.password,
+              "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches/" + encodeURIComponent(branchName),
+              "success": function(o) {
+                  var error = true;
+                  if ('commit' in o) {
+                      if ('sha' in o['commit']) {
+                          error = false;
+                          var newLastCommit = o['commit']['sha'];
+                          if (lastCommit == newLastCommit) {
+                              if (step == 1) {
+                                  //$scope.$dismiss();
+                                   $scope.tryLock();
+                              }
+                              if (step == 2) {
+                                   $scope.performEdit();
+                              }
+                          } else {
+                              $("#rcommit_preloader").css('display', 'none');
+                              $("#rcommit_confirm").css('display', 'block');
+                              $("#rcommit_confirm_apply").css('display', 'none');
+                              $("#rcommit_confirm_error").css('display', 'block');
+                              $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! В репозиторий уже были внесены изменения. Проверье, что ваши изменения корректны и попробуйте ещё раз.");
+                          }
+                      }
+                  }
+                  if (error) {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_confirm").css('display', 'block');
+                      $("#rcommit_confirm_apply").css('display', 'none');
+                      $("#rcommit_confirm_error").css('display', 'block');
+                      $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! Не удалось получить получить актуальные данные из репозитория. Проверьте данные репозитория и попробуйте позже.");
+                  }
+              },
+              "error": function(xhr) {
+                  if (xhr.status == "404" || xhr.status == "403" || xhr.status == "401") {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_confirm").css('display', 'block');
+                      $("#rcommit_confirm_apply").css('display', 'none');
+                      $("#rcommit_confirm_error").css('display', 'block');
+                      $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! Не удалось получить актуальные данные из репозитория. Проверьте данные репозитория и попробуйте позже.");
+                  } else {
+                      setTimeout(function() {
+                        $scope.checkIfCommitInRepoIsLatest(step);
+                      }, 5000);
+                  }
+              }
+          });
+      };
+      $scope.tryLock = function() {
+          fetchOrCreateUUID(function(isNew, uuid, timestamp) {
+               $scope.tryPerformLock(uuid);
+          });
+      };
+      $scope.tryPerformLock = function(uuid) {
+          $.ajax({
+              "method": "GET",
+              "dataType": "json",
+              "username": repoSettings.user,
+              "password": repoSettings.password,
+              "data": {
+                  "chatId" : requestPeerID(globalCurrentDialog),
+                  "uuid": uuid,
+              },
+              "url": "/reviewgram/try_lock/",
+              "success": function(o) {
+                  var error = true;
+                  if ('locked' in o) {
+                      error = false;
+                      if (o['locked']) {
+                          setTimeout(function() {
+                            $scope.tryLock();
+                          }, 5000);
+                      } else {
+                          $scope.checkIfCommitInRepoIsLatest(2);
+                      }
+                  }
+                  if (error) {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_confirm").css('display', 'block');
+                      $("#rcommit_confirm_apply").css('display', 'none');
+                      $("#rcommit_confirm_error").css('display', 'block');
+                      $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! Не удалось заблокировать репозиторий. Проверьте данные репозитория и попробуйте позже.");
+                  }
+              },
+              "error": function(xhr) {
+                  if (xhr.status == "404" || xhr.status == "403" || xhr.status == "401") {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_confirm").css('display', 'block');
+                      $("#rcommit_confirm_apply").css('display', 'none');
+                      $("#rcommit_confirm_error").css('display', 'block');
+                      $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! Не удалось заблокировать репозиторий. Проверьте данные репозитория и попробуйте позже.");
+                  } else {
+                      setTimeout(function() {
+                        $scope.tryLock();
+                      }, 5000);
+                  }
+              }
+          });
+      };
+      $scope.performEdit = function() {
+          $.ajax({
+              "method": "PUT",
+              "dataType": "json",
+              "username": repoSettings.user,
+              "password": repoSettings.password,
+              "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/contents/" + encodeURIComponent(editedFileName),
+              'contentType': 'application/json',
+              "data": JSON.stringify({
+                  "message": "Быстрое исправление через Reviewgram",
+                  "content": b64EncodeUnicode(resultFileContent),
+                  "sha": editedFileSha
+              }),
+              "success": function(o) {
+                  var error = true;
+                  if ('commit' in o) {
+                      if ('url' in o['commit']) {
+                          error = false;
+                          var resultUrl = o['commit']['url'];
+                          resultUrl = resultUrl.replace("api.", "").replace("/repos/", "/").replace("git/commits", "commit");
+                          var sentRequestOptions = {};
+                          var repoUrl = "https://github.com/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/";
+                          var text = " отправил правку " + resultUrl + " в репозиторий " + repoUrl;
+                          var apiPromise = MtpApiManager.invokeApi('messages.sendMessage', {
+                            flags: 128,
+                            peer: AppPeersManager.getInputPeerByID(AppPeersManager.getPeerID(globalCurrentDialog)),
+                            message: text,
+                            random_id: [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)],
+                            reply_to_msg_id: 0,
+                            entities: []
+                          }, sentRequestOptions);
+                          $scope.$dismiss();
+                      }
+                  }
+                  if (error) {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_confirm").css('display', 'block');
+                      $("#rcommit_confirm_apply").css('display', 'none');
+                      $("#rcommit_confirm_error").css('display', 'block');
+                      $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! Не удалось изменить файл. Проверьте данные репозитория и попробуйте позже.");
+                  }
+              },
+              "error": function(xhr) {
+                  if (xhr.status == "404" || xhr.status == "403" || xhr.status == "401") {
+                      $("#rcommit_preloader").css('display', 'none');
+                      $("#rcommit_confirm").css('display', 'block');
+                      $("#rcommit_confirm_apply").css('display', 'none');
+                      $("#rcommit_confirm_error").css('display', 'block');
+                      $("#rcommit_confirm_error .reviewgram-error").html("Ошибка! Не удалось изменить файл. Проверьте данные репозитория и попробуйте позже.");
+                  } else {
+                      setTimeout(function() {
+                        $scope.performEdit();
+                      }, 5000);
+                  }
+              }
+          });
       };
       $scope.back = function() {
           if ($("#rcommit_file_select").css('display') != 'none') {
