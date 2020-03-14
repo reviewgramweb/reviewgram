@@ -342,3 +342,31 @@ setInterval(function() {
         }
     }
 }, 300);
+
+
+var tokenizePython = function(str) {
+    var originalLength = str.length;
+    var strippedStr = str.replace(/^[ \t]+/, "");
+    var newLen = strippedStr.length
+    var offset = originalLength - newLen;
+    var getToken = filbert.tokenize(strippedStr, {"locations" : true});
+    var result = [];
+    var error = false;
+    var end = false;
+    var lastEnd = 0;
+    while (!error && !end) {
+        try {
+            var tmp = getToken();
+            if (tmp.type.type == "eof") {
+                end = true;
+            } else {
+                lastEnd = tmp.end;
+                result.push([tmp.start + offset, tmp.end + offset]);
+            }
+        } catch (e) {
+            result.push([lastEnd + offset + 1, originalLength]);
+            error = true;
+        }
+    }
+    return result;
+};
