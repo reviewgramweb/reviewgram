@@ -4753,6 +4753,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                $(".md_modal_title, .navbar-quick-media-back h4").html("");
                aceEditorMain = ace.edit("editor_edit");
                aceEditorMain.setOption("firstLineNumber", editorRangeSelectStart);
+               aceEditorMain.setOption("tabSize", 4)
                aceEditorMain.setTheme("ace/theme/solarized_dark");
                aceEditorMain.session.setMode(fileNameToAceMode(editedFileName));
                aceEditorMain.setValue(editorEditedPart);
@@ -4787,6 +4788,200 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   aceEditorMain.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + lineSeparator);
                   return;
               }
+          }
+      };
+      $scope.insertTab = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          aceEditorMain.session.insert(pos, "\t");
+          aceEditorMain.focus();
+      };
+      $scope.insertFourSpaces = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          aceEditorMain.session.insert(pos, "    ");
+          aceEditorMain.focus();
+      };
+      $scope.removeTab = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.column != line.length) {
+              if (line[pos.column] == "\t") {
+                  aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column}, "end": {"row": pos.row, "column": pos.column + 1}});
+                  aceEditorMain.focus();
+                  return;
+              }
+          }
+          if (pos.column != 0) {
+              if (line[pos.column - 1] == "\t") {
+                  aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column - 1}, "end": {"row": pos.row, "column": pos.column}});
+                  aceEditorMain.focus();
+                  return;
+              }
+          }
+          var poses = [
+              [pos.column, pos.column + 4],
+              [pos.column - 4, pos.column],
+              [pos.column - 3, pos.column + 1],
+              [pos.column - 2, pos.column + 2],
+              [pos.column - 1, pos.column + 3]
+          ];
+          for (var i = 0; i < poses.length; i++) {
+              if (line.substring(poses[i][0], poses[i][1]) ==  "    ") {
+                  aceEditorMain.session.remove({"start": {"row": pos.row, "column": poses[i][0] }, "end": {"row": pos.row, "column": poses[i][1]}});
+                  aceEditorMain.focus();
+                  return;
+              }
+          }
+      };
+      $scope.removeFourSpaces = function() {
+          $scope.removeTab();
+      };
+      $scope.removePreviousSymbol = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.column != 0) {
+              aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column - 1}, "end": {"row": pos.row, "column": pos.column}});
+              aceEditorMain.focus();
+              return;
+          }
+      };
+      $scope.removeNextSymbol = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.column != line.length) {
+              aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column}, "end": {"row": pos.row, "column": pos.column + 1}});
+              aceEditorMain.focus();
+              return;
+          }
+      };
+      $scope.removePreviousLexeme = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          var tokens = tokenizePython(line);
+          var token = false;
+          for (var  i = 0; (i < tokens.length) && (token === false); i++) {
+              if (tokens[i][0] <= pos.column && pos.column <  tokens[i][1]) {
+                  token = i;
+              }
+          }
+          if (token === false) {
+              for (var  i = 0; (i < tokens.length) && (token === false); i++) {
+                  if (tokens[i][0] <= pos.column && tokens[i][1] <= pos.column) {
+                      token = i;
+                  }
+              }
+          }
+          if (token !== false) {
+              aceEditorMain.session.remove({"start": {"row": pos.row, "column": tokens[token][0]}, "end": {"row": pos.row, "column": tokens[token][1]}});
+              aceEditorMain.focus();
+          }
+      };
+      $scope.findNextLexeme  = function(pos, tokens) {
+          var token = false;
+          for (var  i = 0; (i < tokens.length) && (token === false); i++) {
+              if (tokens[i][0] <= pos.column && pos.column <  tokens[i][1]) {
+                  token = i;
+              }
+          }
+          if (token === false) {
+              for (var  i = 0; (i < tokens.length) && (token === false); i++) {
+                  if (tokens[i][0] >= pos.column) {
+                      token = i;
+                  }
+              }
+          }
+          return token;
+      };
+      $scope.removeNextLexeme = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          var tokens = tokenizePython(line);
+          var token = $scope.findNextLexeme(pos, tokens);
+          if (token !== false) {
+              aceEditorMain.session.remove({"start": {"row": pos.row, "column": tokens[token][0]}, "end": {"row": pos.row, "column": tokens[token][1]}});
+              aceEditorMain.focus();
+          }
+      };
+      $scope.moveToNextSymbol = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.column != line.length) {
+              aceEditorMain.gotoLine(pos.row + 1, pos.column + 1);
+          } else {
+              if (pos.row < line.length - 1) {
+                  aceEditorMain.gotoLine(pos.row + 2, 0);
+              }
+          }
+          aceEditorMain.focus();
+      };
+      $scope.moveToPreviousSymbol = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.column != 0) {
+              aceEditorMain.gotoLine(pos.row + 1, pos.column - 1);
+          } else {
+              if (pos.row > 0) {
+                  line = lines[pos.row - 1];
+                  aceEditorMain.gotoLine(pos.row, line.length);
+              }
+          }
+          aceEditorMain.focus();
+      };
+      $scope.moveToPrevRow = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.row > 0) {
+              aceEditorMain.gotoLine(pos.row, pos.column);
+          }
+          aceEditorMain.focus();
+      };
+      $scope.moveToNextRow = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          if (pos.row < lines.length) {
+              aceEditorMain.gotoLine(pos.row + 2, pos.column);
+          }
+          aceEditorMain.focus();
+      };
+      $scope.moveToBeginOfNextLexeme = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          var tokens = tokenizePython(line);
+          var token = $scope.findNextLexeme(pos, tokens);
+          if (token !== false) {
+              aceEditorMain.gotoLine(pos.row + 1, tokens[token][0]);
+              aceEditorMain.focus();
+          }
+      };
+      $scope.moveToEndOfNextLexeme = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          var tokens = tokenizePython(line);
+          var token = $scope.findNextLexeme(pos, tokens);
+          if (token !== false) {
+              aceEditorMain.gotoLine(pos.row + 1, tokens[token][1]);
+              aceEditorMain.focus();
+          }
+      };
+      $scope.moveToMiddleOfNextLexeme = function() {
+          var pos = aceEditorMain.getCursorPosition();
+          var lines = aceEditorMain.session.doc.getAllLines();
+          var line = lines[pos.row];
+          var tokens = tokenizePython(line);
+          var token = $scope.findNextLexeme(pos, tokens);
+          if (token !== false) {
+              aceEditorMain.gotoLine(pos.row + 1, parseInt((tokens[token][1] + tokens[token][0]) / 2));
+              aceEditorMain.focus();
           }
       };
       $scope.submitEdit = function() {

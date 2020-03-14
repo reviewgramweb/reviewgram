@@ -105,25 +105,27 @@
                   <button class="btn btn-md" onclick="aceEditorMain.redo()">Повтор</button>
               </div>
               <div class="margin-bottom-10">
-                  <button class="btn btn-md" onclick="aceEditorMain.undo()">На символ вправо</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">На символ влево</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.undo()">На строку вниз</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.undo()">На строку вверх</button>
+                  <button class="btn btn-md" ng-click="moveToNextSymbol()">На символ вправо</button>
+                  <button class="btn btn-md" ng-click="moveToPreviousSymbol()">На символ влево</button>
+                  <button class="btn btn-md" ng-click="moveToNextRow()">На строку вниз</button>
+                  <button class="btn btn-md" ng-click="moveToPrevRow()">На строку вверх</button>
               </div>
               <div class="margin-bottom-10">
-                  <button class="btn btn-md" onclick="aceEditorMain.undo()">В начало следующей лексемы</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">В середину следующей лексемы</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">В конец следующей лексемы</button>
+                  <button class="btn btn-md" ng-click="moveToBeginOfNextLexeme()">В начало следующей лексемы</button>
+                  <button class="btn btn-md" ng-click="moveToMiddleOfNextLexeme()">В середину следующей лексемы</button>
+                  <button class="btn btn-md" ng-click="moveToEndOfNextLexeme()">В конец следующей лексемы</button>
               </div>
               <div class="margin-bottom-10">
-                  <button class="btn btn-md" onclick="aceEditorMain.undo()">Вставить Tab</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Вставить четыре пробела</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Удалить Tab</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Удалить четыре пробела</button>
+                  <button class="btn btn-md" ng-click="insertTab()">Вставить Tab</button>
+                  <button class="btn btn-md" ng-click="insertFourSpaces()">Вставить четыре пробела</button>
+                  <button class="btn btn-md" ng-click="removeTab()">Удалить Tab</button>
+                  <button class="btn btn-md" ng-click="removeFourSpaces()">Удалить четыре пробела</button>
               </div>
               <div class="margin-bottom-10">
-                  <button class="btn btn-md" onclick="aceEditorMain.undo()">Удалить лексему слева</button>
-                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Удалить лексему справа</button>
+                  <button class="btn btn-md" ng-click="removePreviousSymbol()">Удалить cимвол слева</button>
+                  <button class="btn btn-md" ng-click="removeNextSymbol()">Удалить символ справа</button>
+                  <button class="btn btn-md" ng-click="removePreviousLexeme()">Удалить лексему слева</button>
+                  <button class="btn btn-md" ng-click="removeNextLexeme()">Удалить лексему справа</button>
               </div>
           </div>
       </div>
