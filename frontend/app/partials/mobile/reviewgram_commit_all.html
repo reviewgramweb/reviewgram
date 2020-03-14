@@ -94,20 +94,49 @@
   <div id="rcommit_edit" class="subform" style="display: none;">
       <div class="editor-wrapper">
       </div>
-      <div style="margin-top: 10px;">
-          Редактор
+      <div class="edit-tab-container">
+          <div class="header">
+              <div class="section-arrow arrow-right"></div>
+              Редактор
+          </div>
+          <div class="body">
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">Отмена</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Повтор</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">На символ вправо</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">На символ влево</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">На строку вниз</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">На строку вверх</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">В начало следующей лексемы</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">В середину следующей лексемы</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">В конец следующей лексемы</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">Вставить Tab</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Вставить четыре пробела</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Удалить Tab</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Удалить четыре пробела</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" onclick="aceEditorMain.undo()">Удалить лексему слева</button>
+                  <button class="btn btn-md" onclick="aceEditorMain.redo()">Удалить лексему справа</button>
+              </div>
+          </div>
       </div>
-      <div style="autocomplete-container">
-          <button class="btn btn-md" onclick="aceEditorMain.undo()">Отмена</button>
-          <button class="btn btn-md" onclick="aceEditorMain.redo()">Повтор</button>
-      </div>
-      <div style="margin-top: 10px;">
-          Автодополнение
-      </div>
-      <div style="autocomplete-container">
-          <button class="btn btn-md">, list2</button>
-          <button class="btn btn-md">, </button>
-          <button class="btn btn-md">(a)</button>
+      <div class="edit-tab-container">
+          <div class="header">
+              <div class="section-arrow arrow-right"></div>
+              Автодополнение
+          </div>
+          <div class="body">
+              <button class="btn btn-md">, list2</button>
+              <button class="btn btn-md">, </button>
+              <button class="btn btn-md">(a)</button>
+          </div>
       </div>
       <div class="form-group">
           Выберите команду:

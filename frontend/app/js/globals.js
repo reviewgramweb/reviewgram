@@ -320,6 +320,17 @@ $("body").on("click", "#editor_range_select .ace_gutter-cell", function() {
     editorRangeSelectLastClick = currentLineNo;
 });
 
+$("body").on("click", ".edit-tab-container .header", function() {
+    var parent = $(this).parent();
+    if (parent.hasClass("selected")) {
+        parent.removeClass("selected");
+        parent.find(".section-arrow").removeClass("toggled").removeClass("arrow-down").addClass("arrow-right");
+    } else {
+        parent.addClass("selected");
+        parent.find(".section-arrow").addClass("toggled").addClass("arrow-down").removeClass("arrow-right");
+    }
+});
+
 setInterval(function() {
     if ($("#editor_range_select").length != 0) {
         if (editorRangeSelectStart != null) {

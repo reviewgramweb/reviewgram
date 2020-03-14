@@ -276,3 +276,106 @@
     height: 300px !important;
     margin-bottom: 15px !important;
 }
+
+.section-arrow {
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.section-arrow.arrow-up {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+
+  border-bottom: 5px solid rgb(73,194,134);
+}
+
+.section-arrow.arrow-down {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+
+  border-top: 5px solid rgb(73,194,134);
+}
+
+.section-arrow.arrow-right {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+
+  border-left: 5px solid rgb(73,194,134);
+}
+
+.section-arrow.arrow-left {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+
+  border-right:5px solid rgb(73,194,134);
+}
+
+.section-arrow.toggled.arrow-up {
+  border-bottom: 5px solid rgb(255, 255, 255);
+}
+
+.section-arrow.toggled.arrow-down {
+  border-top: 5px solid rgb(255, 255, 255);
+  position: relative;
+  top: -2px;
+}
+
+.section-arrow.toggled.arrow-right {
+  border-left: 5px solid rgb(255, 255, 255);
+}
+
+.section-arrow.toggled.arrow-left {
+  border-right: 5px solid rgb(255, 255, 255);
+}
+
+.edit-tab-container {
+    margin-top: 10px;
+    margin-right: 10px;
+}
+
+.edit-tab-container .header {
+    color: rgb(73,194,134);
+    font-weight: bold;
+    cursor: pointer;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.edit-tab-container.selected  {
+    border: 1px solid rgb(73,194,134);
+}
+
+.edit-tab-container .btn {
+    margin-top: 2px;
+}
+
+.edit-tab-container.selected .header {
+    background-color: rgb(73,194,134);
+    color: #ffffff;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.edit-tab-container .body {
+   display: none;
+}
+
+.margin-bottom-10 {
+    margin-bottom: 10px;
+}
+
+.edit-tab-container.selected .body {
+    margin-top: 10px;
+    margin-left: 2px;
+    margin-right: 2px;
+    margin-bottom: 10px;
+    display: block;
+}
