@@ -15,6 +15,8 @@ import base64
 import traceback
 import requests
 import time
+import tempfile
+import subprocess
 
 load_dotenv(find_dotenv())
 
@@ -156,6 +158,38 @@ def is_user_in_chat(uuid, chatId):
     except Exception as e:
         append_to_log("/reviewgram/register_chat_id_for_token/: Exception " + traceback.format_exc())
         return False
+
+
+# Группирует ошибки из pyflakes в кортежи (строка, список ошибок)
+def build_error_line_groups(fileName, errorContent):
+    errorContentLines = errorContent.split("\n")
+    errorsByLines = []
+    for line in errorContentLines:
+        if (line.startswith(fileName)):
+            lineWithoutName = line[(len(fileName)+1):]
+            secondColonPos = lineWithoutName.index(":")
+            numberAsString = lineWithoutName[:secondColonPos]
+            lineNo = int(numberAsString)
+            tuple = (lineNo, [line])
+            errorsByLines.append(tuple)
+        else:
+            if (len(errorsByLines) != 0):
+                errorsByLines[len(errorsByLines) - 1][1].append(line)
+    return errorsByLines
+
+# Запускает PyFlakes
+def run_pyflakes(name, content, start, end):
+    with tempfile.NamedTemporaryFile() as temp:
+        temp.write(content.encode("UTF-8"))
+        temp.flush()
+        fileName = temp.name
+        result = subprocess.run(['pyflakes', fileName], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        errorContent = result.stderr.decode("UTF-8")
+        errors = build_error_line_groups(fileName, errorContent)
+        ownErrors = [error for error in errors if ((error[0] >= start) and (error[0] <= end))]
+        ownErrors = list(map(lambda x:"\n".join(x[1]), ownErrors))
+        ownErrors = "\n".join(ownErrors).replace(fileName, name)
+        return ownErrors
 
 @app.route('/')
 def index():
@@ -299,6 +333,25 @@ def try_lock():
                 return jsonify({"locked": False})
     else:
         abort(404)
+
+@app.route('/reviewgram/check_syntax/', methods=['POST', 'GET'])
+def check_syntax():
+    data = request.json
+    if data is None:
+        return jsonify({"errors": ""})
+    try:
+        fileName = safe_get_key(data, ["filename"])
+        content = safe_get_key(data, ["content"])
+        start = safe_get_key(data, ["start"])
+        end = safe_get_key(data, ["end"])
+        if ((fileName is not None) and (content is not None) and (start is not None) and (end is not None)):
+            fileContent = base64.b64decode(content)
+            errors = run_pyflakes(fileName, fileContent.decode('UTF-8'), start, end)
+            errors = base64.b64encode(errors.encode('UTF-8')).decode('UTF-8')
+            return jsonify({"errors": errors})
+    except Exception as e:
+        append_to_log("/reviewgram/check_syntax: Exception " + traceback.format_exc())
+    return jsonify({"errors": ""})
 
 gunicorn_logger = logging.getLogger("gunicorn.error")
 app.logger.handlers = gunicorn_logger.handlers

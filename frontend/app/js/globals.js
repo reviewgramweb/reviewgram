@@ -3,6 +3,7 @@ var sendMessageRequest = null;
 var requestPeerID = null;
 var tokenLiveCountMinutes = 150;
 var secondsInMinute = 60;
+var isEditRequestRunning = false;
 
 function makeBasicAuth(user, password) {
   var tok = user + ':' + password;

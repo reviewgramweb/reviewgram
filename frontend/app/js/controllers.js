@@ -4747,7 +4747,9 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                editorEditedPart = strings;
                $("#rcommit_range_select").css('display', 'none');
                $("#rcommit_edit").css('display', 'block');
+               $("#rcommit_edit #edit-syntax-error").html("");
                $("#rcommit_edit .editor-wrapper").html("");
+                isEditRequestRunning = false;
                $("#rcommit_edit .editor-wrapper").html("<div id=\"editor_edit\"></div>");
                $("#rcommit_edit .editor-wrapper #editor_edit").html(escapeHtml(editorEditedPart));
                $(".md_modal_title, .navbar-quick-media-back h4").html("");
@@ -4985,6 +4987,10 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           }
       };
       $scope.submitEdit = function() {
+          if (isEditRequestRunning) {
+              return;
+          }
+          isEditRequestRunning = true;
           var strings = editedFileContent.split(lineSeparator);
           var begin = strings.slice(0, editorRangeSelectStart - 1);
           var rangeEnd = editorRangeSelectEnd;
@@ -4995,12 +5001,92 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           var middle = aceEditorMain.session.doc.getAllLines();
           var content = begin.concat(middle).concat(end);
           resultFileContent = content.join(lineSeparator);
+          $("#rcommit_edit #edit-syntax-error").html("");
+          $("#rcommit_edit").css("display", "none");
+          $("#rcommit_preloader").css('display', 'block');
+          $scope.performSyntaxCheck();
+      };
+     $scope.performSyntaxCheck = function() {
+         var rangeEnd = editorRangeSelectEnd;
+         if (rangeEnd == null) {
+             rangeEnd = editorRangeSelectStart;
+         }
+         $.ajax({
+             "method": "POST",
+             "dataType": "json",
+             "url": "/reviewgram/check_syntax/",
+             'contentType': 'application/json',
+             "data": JSON.stringify({
+                 "filename": editedFileName,
+                 "content": b64EncodeUnicode(resultFileContent),
+                 "start": editorRangeSelectStart,
+                 "end": rangeEnd
+             }),
+             "success": function(o) {
+                 isEditRequestRunning = false;
+                 var error = true;
+                 if ('errors' in o) {
+                     error = false;
+                     var text = escapeHtml(b64DecodeUnicode(o["errors"]));
+                     if (text.trim().length == 0) {
+                         $("#rcommit_edit #edit-syntax-error").html("");
+                         $("#rcommit_preloader").css('display', 'none');
+                         $("#rcommit_edit").css('display', 'none');
+                         $("#rcommit_confirm").css('display', 'block');
+                         $("#rcommit_confirm_apply").css('display', 'block');
+                         $("#rcommit_confirm_error").css('display', 'none');
+                         $(".md_modal_title, .navbar-quick-media-back h4").html("Подтверждение");
+                         $(window).trigger('resize');
+                     } else {
+                         text = text.replace(/[\n]/g, "<br>")
+                         $("#rcommit_preloader").css('display', 'none');
+                         $("#rcommit_edit").css('display', 'block');
+                         var errorWrap = "<div class=\"edit-tab-container selected\">";
+                         errorWrap += "<div class=\"header\">";
+                         errorWrap += "<div class=\"section-arrow toggled arrow-down\"></div>";
+                         errorWrap += "Ошибка";
+                         errorWrap += "</div>";
+                         errorWrap += "<div class=\"reviewgram-error body\">";
+                         errorWrap += "Синтаксическая ошибка! При проверке через pyflakes, обнаружены следующие ошибки ниже:<br>" + text;
+                         errorWrap += "</div>";
+                         errorWrap += "</div>";
+                         $("#rcommit_edit #edit-syntax-error").html(errorWrap);
+                         $(window).trigger('resize');
+                     }
+                 }
+                 if (error) {
+                     $("#rcommit_preloader").css('display', 'none');
+                     $("#rcommit_error").css('display', 'block');
+                     $("#rcommit_error").find(".reviewgram-error").html("Не удалось проверить синтаксис файла. Попробуйте ещё раз провести правку.");
+                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                     $("#rcommit_error").find(".buttons").css("display", "none");
+                     $(window).trigger('resize');
+                 }
+             },
+             "error": function(xhr) {
+                 if (xhr.status == "404" || xhr.status == "403" || xhr.status == "401") {
+                     $("#rcommit_preloader").css('display', 'none');
+                     $("#rcommit_error").css('display', 'block');
+                     $("#rcommit_error").find(".reviewgram-error").html("Не удалось проверить синтаксис файла. Попробуйте ещё раз провести правку.");
+                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                     $("#rcommit_error").find(".buttons").css("display", "none");
+                     $(window).trigger('resize');
+                 } else {
+                     setTimeout(function() {
+                       $scope.performSyntaxCheck();
+                     }, 5000);
+                 }
+             }
+         });
+     };
+      $scope.showConfirmationModal = function() {
           $("#rcommit_edit").css('display', 'none');
           $("#rcommit_confirm").css('display', 'block');
           $("#rcommit_confirm_apply").css('display', 'block');
           $("#rcommit_confirm_error").css('display', 'none');
           $(".md_modal_title, .navbar-quick-media-back h4").html("Подтверждение");
           $(window).trigger('resize');
+          isEditRequestRunning = false;
       };
       $scope.submitConfirmation = function() {
           $("#rcommit_confirm").css('display', 'none');
@@ -5217,8 +5303,10 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           }
           if ($("#rcommit_confirm").css('display') != 'none') {
               $("#rcommit_edit").css('display', 'block');
+              $("#rcommit_edit #edit-syntax-error").html("");
               $("#rcommit_confirm").css('display', 'none');
               $(".md_modal_title, .navbar-quick-media-back h4").html("");
+              isEditRequestRunning = false;
               $(window).trigger('resize');
           }
       }
