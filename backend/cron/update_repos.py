@@ -13,7 +13,7 @@ import subprocess
 
 path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(path + "/../")
-from reviewgram import AESCipher, repoFolderName
+from reviewgram import AESCipher, repo_folder_name
 
 env_path = Path(path + "/../") / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -33,7 +33,7 @@ def try_print_error(result):
     return False
 
 def clone_or_update_repo(con, repoInfo, timestamp):
-    folderName = repoFolderName(repoInfo["REPO_USER_NAME"], repoInfo["REPO_SAME_NAME"], repoInfo["BRANCH_ID"])
+    folderName = repo_folder_name(repoInfo["REPO_USER_NAME"], repoInfo["REPO_SAME_NAME"], repoInfo["BRANCH_ID"])
     sitePath = repoInfo["USER"] + ":" + repoInfo["PASSWORD"] + "@" + repoInfo["REPO_SITE"]
     onlineRepoPath = "https://" + sitePath + "/" + repoInfo["REPO_USER_NAME"] + "/" + repoInfo["REPO_SAME_NAME"] + ".git"
     error = False

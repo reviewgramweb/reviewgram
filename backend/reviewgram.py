@@ -18,6 +18,7 @@ import time
 import tempfile
 import subprocess
 import re
+import jedi
 
 load_dotenv(find_dotenv())
 
@@ -54,8 +55,69 @@ class AESCipher(object):
         return raw
 
 # Формирует имя папки репозитория
-def repoFolderName(repoUserName, repoName, branchId):
+def repo_folder_name(repoUserName, repoName, branchId):
     return repoUserName + "_" + repoName + "_" + re.sub(r"[^0-9a-zA-Z_]", "__", branchId)
+
+
+# существует ли папка репозитория
+def is_repo_folder_exists(repoUserName, repoName, branchId):
+    folderName = repo_folder_name(repoUserName, repoName, branchId)
+    path = os.path.dirname(os.path.abspath(__file__))
+    fullPath = path + "/repos/" + folderName + "/.git/"
+    return os.path.isdir(fullPath)
+
+# полная папка репозитория
+def full_repo_folder_name(repoUserName, repoName, branchId):
+    folderName = repo_folder_name(repoUserName, repoName, branchId)
+    path = os.path.dirname(os.path.abspath(__file__))
+    fullPath = path + "/repos/" + folderName + "/"
+    return fullPath
+
+# Пытается вставить задачу на клонирование репозитория
+def try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, branchId):
+    result = select_and_fetch_one(con, "SELECT * FROM `repository_cache_storage_table` WHERE `REPO_SITE` = %s AND `REPO_USER_NAME` = %s  AND `REPO_SAME_NAME` = %s  AND `BRANCH_ID` = %s LIMIT 1" , [repoSite, repoUserName, repoSameName, branchId])
+    if (result is None):
+        execute_update(con, "INSERT INTO `repository_cache_storage_table`(REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, BRANCH_ID, TSTAMP) VALUES (%s, %s, %s, %s, 0)", [repoSite, repoUserName, repoSameName, branchId])
+
+
+#  Делает автодополнение через jedi, используя даннные папки и содержимое
+def jedi_try_autocomplete_with_folder(content, line, position, folderName):
+    result = []
+    try:
+        script = jedi.Script(content, line, position, folderName)
+        completions = script.completions()
+    except jedi.NotFoundError:
+        completions = []
+    for completion in completions:
+        result.append({
+            'append_type': 'no_space'
+            'complete': completion.complete, # What to add
+            'name_with_symbols': completion.name_with_symbols # A displayable name
+        })
+    return result
+
+# Пытается сделать автодополнение через jedi,  добавляя репозиторий на клонирование в процессе
+def jedi_try_autocomplete(con, chatId, branchId, content, line, position):
+    try:
+        result = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME FROM `repository_settings` WHERE `CHAT_ID` = " + str(chatId) + " LIMIT 1"  ,[])
+        if (result is not None):
+            repoSite = result[0]
+            repoUserName = result[1]
+            repoSameName = result[2]
+            result = []
+            if (is_repo_folder_exists(repoUserName, repoSameName, branchId)):
+                folderName = full_repo_folder_name(repoUserName, repoSameName, branchId)
+                result = jedi_try_autocomplete_with_folder(content, line, position, folderName)
+            else:
+                try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, branchId)
+                result =  jedi_try_autocomplete_with_folder(content, line, position, ".")
+            return result
+        else:
+            return []
+    except Exception as e:
+        print(traceback.format_exc())
+        append_to_log("/reviewgram/jedi_try_autocomplete: Exception " + traceback.format_exc())
+        return []
 
 # Получение вложенных данных из словаря
 def safe_get_key(dict, keys):
