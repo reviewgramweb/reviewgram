@@ -17,6 +17,7 @@ import requests
 import time
 import tempfile
 import subprocess
+import re
 
 load_dotenv(find_dotenv())
 
@@ -51,6 +52,10 @@ class AESCipher(object):
         raw_bytes = cipher.decrypt(enc[self.bs + 4:])
         raw = raw_bytes[:raw_size].decode('utf_8')
         return raw
+
+# Формирует имя папки репозитория
+def repoFolderName(repoUserName, repoName, branchId):
+    return repoUserName + "_" + repoName + "_" + re.sub(r"[^0-9a-zA-Z_]", "__", branchId)
 
 # Получение вложенных данных из словаря
 def safe_get_key(dict, keys):
@@ -353,9 +358,9 @@ def check_syntax():
         append_to_log("/reviewgram/check_syntax: Exception " + traceback.format_exc())
     return jsonify({"errors": ""})
 
-gunicorn_logger = logging.getLogger("gunicorn.error")
-app.logger.handlers = gunicorn_logger.handlers
-app.logger.setLevel(gunicorn_logger.level)
 
 if __name__ == '__main__':
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
     app.run(debug=True, host='0.0.0.0')

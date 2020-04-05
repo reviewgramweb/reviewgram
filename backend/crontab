@@ -1,3 +1,4 @@
 * */3 * * * python3 /root/reviewgram/cron/clear_tokens.py
 */6 * * * * python3 /root/reviewgram/cron/clear_chats.py
 */3 * * * * python3 /root/reviewgram/cron/clear_locks.py
+*/1 * * * * python3 /root/reviewgram/cron/update_repos.py
