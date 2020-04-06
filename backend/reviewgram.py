@@ -574,6 +574,36 @@ def check_syntax():
         append_to_log("/reviewgram/check_syntax: Exception " + traceback.format_exc())
     return jsonify({"errors": ""})
 
+@app.route('/reviewgram/get_autocompletions/', methods=['POST', 'GET'])
+def get_autocompletions():
+    data = request.json
+    if data is None:
+        return jsonify([])
+    try:
+        tokens = safe_get_key(data, ["tokens"])
+        content = safe_get_key(data, ["content"])
+        line = safe_get_key(data, ["line"])
+        position = safe_get_key(data, ["position"])
+        chatId = int(safe_get_key(data, ["chatId"]))
+        branchId = int(safe_get_key(data, ["branchId"]))
+        if ((tokens is not None) and (content is not None) and (line is not None) and (position is not None) and (chatId is not None) and (branchId is not None)):
+            if (not isinstance(tokens, list)):
+                raise Exception("Error!")
+            fileContent = base64.b64decode(content)
+            con1 = connect_to_db()
+            con2 = connect_to_db()
+            result = []
+            with con1:
+                result = result + jedi_try_autocomplete(con1, chatId, branchId, fileContent, line, position)
+                con1.close()
+            with con2:
+                result = result + table_try_autocomplete(con2, tokens)
+                con2.close()
+            return jsonify(result)
+    except Exception as e:
+        append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
+    return jsonify([])
+
 
 if __name__ == '__main__':
     gunicorn_logger = logging.getLogger("gunicorn.error")
