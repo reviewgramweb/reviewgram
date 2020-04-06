@@ -5,6 +5,7 @@ from datetime import datetime
 
 from Crypto import Random
 from Crypto.Cipher import AES
+from functools import wraps
 
 import struct
 import logging
@@ -17,8 +18,11 @@ import requests
 import time
 import tempfile
 import subprocess
+import math
 import re
 import jedi
+import errno
+import signal
 
 load_dotenv(find_dotenv())
 
@@ -27,6 +31,22 @@ bot_api_token  = os.getenv("BOT_API_TOKEN")
 
 app = Flask(__name__)
 
+# Исключение для таймаута
+class TimeoutError(Exception):
+    pass
+
+# Декоратор для таймаута
+class Timeout:
+    def __init__(self, seconds=1, error_message='Timeout'):
+        self.seconds = seconds
+        self.error_message = error_message
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
 
 # Класс для шифрования данных
 class AESCipher(object):
@@ -79,6 +99,132 @@ def try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, bran
     if (result is None):
         execute_update(con, "INSERT INTO `repository_cache_storage_table`(REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, BRANCH_ID, TSTAMP) VALUES (%s, %s, %s, %s, 0)", [repoSite, repoUserName, repoSameName, branchId])
 
+# Строит запрос для автодополнения из таблицы по полному совпадению
+def build_exact_match_autocomplete_query(amount, limit):
+	if (amount == 0):
+		return ""
+	if (amount == 1):
+		return "SELECT DISTINCT(r2.TEXT) " \
+				"FROM" \
+				"	`repository_autocompletion_lexemes` AS r1, " \
+				"	`repository_autocompletion_lexemes` AS r2  " \
+				"WHERE " \
+				"	r1.LEXEME_ID = 0 AND r1.`TEXT` = %s " \
+				"AND r2.LEXEME_ID = 1 " \
+				"AND r1.ROW_ID = r2.ROW_ID " \
+				"LIMIT " + str(limit)
+	result = "SELECT DISTINCT(r" + str(amount + 1) +".TEXT) "
+	result += " FROM "
+	i = 1
+	while (i <= amount):
+		result += "    `repository_autocompletion_lexemes` AS r" + str(i) + ", "
+		i = i + 1
+	result += "    `repository_autocompletion_lexemes` AS r" + str(amount + 1) + "  "
+	result += " WHERE "
+	result += "        r1.LEXEME_ID = 0 AND r1.`TEXT` = %s  "
+	i = 2
+	while (i <= amount):
+		result += "    AND r" + str(i) +  ".LEXEME_ID = " + str(i - 1) + " AND r" + str(i) +  ".`TEXT` = %s "
+		i = i + 1
+	result += "    AND r" +  str(amount + 1) +".LEXEME_ID = "  + str(amount) + " "
+	i = 0
+	while (i < amount):
+		result += "    AND r1.ROW_ID = r" + str(i + 2) + ".ROW_ID "
+		i = i + 1
+	result += " LIMIT " + str(limit)
+	return result
+
+# Строит запрос для автодополнения  из таблицы по неполному совпадению
+def build_non_exact_match_autocomplete_query(amount, limit):
+	if (amount == 0):
+		return ""
+	if (amount == 1):
+		return "SELECT DISTINCT(r1.`TEXT`) " \
+			   "FROM "                       \
+			   "  `repository_autocompletion_lexemes` AS r1 " \
+			   "WHERE " \
+			   "r1.`LEXEME_ID` = 0 AND levenshtein(r1.`TEXT`, %s) <= CHAR_LENGTH(r1.`TEXT`) / 2  " \
+			   "LIMIT " + str(limit)
+	result = "SELECT DISTINCT(r" + str(amount) +".TEXT) "
+	result += " FROM "
+	i = 1
+	while (i < amount):
+		result += "    `repository_autocompletion_lexemes` AS r" + str(i) + ", "
+		i = i + 1
+	result += "    `repository_autocompletion_lexemes` AS r" + str(amount) + "  "
+	result += " WHERE "
+	result += " r1.LEXEME_ID = 0 AND r1.`TEXT` = %s "
+	i = 2
+	while (i < amount):
+		result += " AND r" + str(i) + ".LEXEME_ID = " + str(i - 1) + " AND r" + str(i) + ".`TEXT` = %s "
+		i = i + 1
+	result += " AND r" + str(amount)  + ".LEXEME_ID = " + str(amount - 1)  + " AND levenshtein(r" + str(amount)  + ".`TEXT`, %s) <= CHAR_LENGTH(r" + str(amount)  + ".`TEXT`) / 2 "
+	i = 2
+	while (i <= amount):
+		result += "AND r1.ROW_ID = r"  + str(i) + ".ROW_ID "
+		i = i + 1
+	result += " LIMIT " + str(limit)
+	return result
+
+# Пытается сделать автодополнение через таблицу
+def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
+    if (len(lexemes) == 0):
+        return []
+    exactLimit = math.ceil(maxAmount / 2)
+    exactQuery = build_exact_match_autocomplete_query(len(lexemes), exactLimit)
+    exactRows = []
+    try:
+        with Timeout(seconds = 3):
+            exactRows = select_and_fetch_all(con, exactQuery, lexemes)
+    except:
+        try:
+            con.close()
+        except:
+            append_to_log("/reviewgram/table_autocomplete/: Unable to close connection")
+        con = connect_to_db()
+        append_to_log("/reviewgram/table_autocomplete/: " + traceback.format_exc())
+        append_to_log("/reviewgram/table_autocomplete/: Timeout for fetching autocompletion")
+    result = []
+    for row in exactRows:
+        result.append({
+            'append_type': 'space',
+            'complete': row[0],
+            'name_with_symbols': row[0]
+        })
+    nonExactLimit = maxAmount - len(result)
+    nonExactQuery = build_non_exact_match_autocomplete_query(len(lexemes), nonExactLimit)
+    nonExactRows = []
+    try:
+        with Timeout(seconds = 3):
+            nonExactRows = select_and_fetch_all(con, nonExactQuery, lexemes)
+    except:
+        try:
+            con.close()
+        except:
+            append_to_log("/reviewgram/table_autocomplete/: Unable to close connection")
+        con = connect_to_db()
+        append_to_log("/reviewgram/table_autocomplete/: " + traceback.format_exc())
+        append_to_log("/reviewgram/table_autocomplete/: Timeout for fetching autocompletion")
+    for row in nonExactRows:
+        if (row[0].startswith(lexemes[-1])):
+            completePart = row[0][len(lexemes[-1]):]
+            if (len(completePart) != 0):
+                result.append({
+                    'append_type': 'no_space',
+                    'complete': completePart,
+                    'name_with_symbols': row[0]
+                })
+    if (len(result) < maxAmount):
+        result  = result + table_try_autocomplete_with_max_amount(con, lexemes[1:], maxAmount - len(result))
+    return result
+
+
+# Пытается сделать автодополнение через таблицу
+def table_try_autocomplete(con, lexemes):
+    if (len(lexemes) == 0):
+        return []
+    maxAmount = int(os.getenv("AUTOCOMPLETE_MAX_AMOUNT"))
+    return table_try_autocomplete_with_max_amount(con, lexemes, maxAmount)
 
 #  Делает автодополнение через jedi, используя даннные папки и содержимое
 def jedi_try_autocomplete_with_folder(content, line, position, folderName):
@@ -90,9 +236,9 @@ def jedi_try_autocomplete_with_folder(content, line, position, folderName):
         completions = []
     for completion in completions:
         result.append({
-            'append_type': 'no_space'
-            'complete': completion.complete, # What to add
-            'name_with_symbols': completion.name_with_symbols # A displayable name
+            'append_type': 'no_space',
+            'complete': completion.complete,
+            'name_with_symbols': completion.name_with_symbols
         })
     return result
 
@@ -132,6 +278,14 @@ def safe_get_key(dict, keys):
 # Соединение с БД
 def connect_to_db():
     return pymysql.connect(os.getenv("MYSQL_HOST"), os.getenv("MYSQL_USER"), os.getenv("MYSQL_PASSWORD"), os.getenv("MYSQL_DB"))
+
+# Получение первой строки по запросу из БД
+def select_and_fetch_all(con, query, params):
+    cur = con.cursor()
+    cur.execute(query, params)
+    result = cur.fetchall()
+    cur.close()
+    return result
 
 # Получение первой строки по запросу из БД
 def select_and_fetch_one(con, query, params):
