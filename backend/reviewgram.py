@@ -186,8 +186,12 @@ def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
         append_to_log("/reviewgram/table_autocomplete/: Timeout for fetching autocompletion")
     result = []
     for row in exactRows:
+        appendType = 'space'
+        firstChar = row[0][0].lower()
+        if ((not re.match("^[a-zA-Z]$", firstChar)) and (firstChar != "\"") and (firstChar != "'")):
+            appendType = 'no_space'
         result.append({
-            'append_type': 'space',
+            'append_type': appendType,
             'complete': row[0],
             'name_with_symbols': row[0]
         })
