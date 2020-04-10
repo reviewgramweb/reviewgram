@@ -586,10 +586,10 @@ def get_autocompletions():
     try:
         tokens = safe_get_key(data, ["tokens"])
         content = safe_get_key(data, ["content"])
-        line = safe_get_key(data, ["line"])
-        position = safe_get_key(data, ["position"])
+        line = int(safe_get_key(data, ["line"]))
+        position = int(safe_get_key(data, ["position"]))
         chatId = int(safe_get_key(data, ["chatId"]))
-        branchId = int(safe_get_key(data, ["branchId"]))
+        branchId = safe_get_key(data, ["branchId"])
         if ((tokens is not None) and (content is not None) and (line is not None) and (position is not None) and (chatId is not None) and (branchId is not None)):
             if (not isinstance(tokens, list)):
                 raise Exception("Error!")
@@ -597,13 +597,28 @@ def get_autocompletions():
             con1 = connect_to_db()
             con2 = connect_to_db()
             result = []
-            with con1:
-                result = result + jedi_try_autocomplete(con1, chatId, branchId, fileContent, line, position)
-                con1.close()
-            with con2:
-                result = result + table_try_autocomplete(con2, tokens)
-                con2.close()
-            return jsonify(result)
+            try:
+                with con1:
+                    result = result + jedi_try_autocomplete(con1, chatId, branchId, fileContent, line, position)
+            except Exception as e:
+                append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
+            append_to_log("/reviewgram/get_autocompletions: Proceeding to table")
+            try:
+                with con2:
+                    if (len(result) == 0):
+                        result = result + table_try_autocomplete(con2, tokens)
+            except Exception as e:
+                append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
+            append_to_log("/reviewgram/get_autocompletions: Proceeding to result")
+            resultHash = {}
+            filteredResult = []
+            for part in result:
+                if (not (part["complete"] in resultHash)):
+                    resultHash[part["complete"]] = True
+                    filteredResult.append(part)
+            if (len(filteredResult) > 5):
+                filteredResult = filteredResult[0:5]
+            return jsonify(filteredResult)
     except Exception as e:
         append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
     return jsonify([])

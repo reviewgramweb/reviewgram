@@ -4759,6 +4759,15 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                aceEditorMain.setTheme("ace/theme/solarized_dark");
                aceEditorMain.session.setMode(fileNameToAceMode(editedFileName));
                aceEditorMain.setValue(editorEditedPart);
+               aceEditorMain.session.selection.on('changeCursor', function(o) {
+                   var cursorPosition = aceEditorMain.getCursorPosition();
+                   editorCursorPosition = cursorPosition;
+                   if (editorAutocompleteSendTimeoutHandle !== null) {
+                       clearTimeout(editorAutocompleteSendTimeoutHandle);
+                   }
+                   editorAutocompleteSendTimeoutHandle = setTimeout(sendAutocompleteRequest, 5000);
+               });
+               $(".autocompletion .body").html("");
                $(window).trigger('resize');
            }
       };
@@ -4991,16 +5000,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               return;
           }
           isEditRequestRunning = true;
-          var strings = editedFileContent.split(lineSeparator);
-          var begin = strings.slice(0, editorRangeSelectStart - 1);
-          var rangeEnd = editorRangeSelectEnd;
-          if (rangeEnd == null) {
-              rangeEnd = editorRangeSelectStart;
-          }
-          var end = strings.slice(rangeEnd);
-          var middle = aceEditorMain.session.doc.getAllLines();
-          var content = begin.concat(middle).concat(end);
-          resultFileContent = content.join(lineSeparator);
+          getResultFileContent();
           $("#rcommit_edit #edit-syntax-error").html("");
           $("#rcommit_edit").css("display", "none");
           $("#rcommit_preloader").css('display', 'block');

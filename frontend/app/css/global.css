@@ -379,3 +379,8 @@
     margin-bottom: 10px;
     display: block;
 }
+
+
+.autocompletion .body .btn.btn-md {
+    margin-right: 2px;
+}

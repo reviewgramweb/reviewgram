@@ -167,11 +167,14 @@ var allowedFileExtensions = [".txt", ".py"];
 var editorRangeSelectStart = null;
 var editorRangeSelectEnd = null;
 var editorRangeSelectLastClick = null;
+var editorCursorPosition = null;
+var editorAutocompleteSendTimeoutHandle = null;
 var lineSelectLimit = 10;
 var editorEditedPart = "";
 var namesToModes = {".py": "ace/mode/python"};
 var lineSeparator = "";
 var resultFileContent = "";
+
 
 var fileNameToAceMode = function(fileName) {
     var name = fileName.toLowerCase();
@@ -332,6 +335,20 @@ $("body").on("click", ".edit-tab-container .header", function() {
     }
 });
 
+$("body").on("click", ".autocompletion .body .btn.btn-md", function() {
+    var me = $(this);
+    var row = parseInt(me.attr("data-row"));
+    var column = parseInt(me.attr("data-column"));
+    var completeType = me.attr("data-complete-type");
+    var complete = me.attr("data-complete");
+    if (completeType != "no_space") {
+        complete = " " + completeType;
+    }
+    aceEditorMain.session.insert({"row": row, "column": column}, complete);
+    aceEditorMain.focus();
+    $(".autocompletion .body").html("");
+});
+
 setInterval(function() {
     if ($("#editor_range_select").length != 0) {
         if (editorRangeSelectStart != null) {
@@ -344,7 +361,7 @@ setInterval(function() {
     }
 }, 300);
 
-
+// Разбивает строки на токены
 var tokenizePython = function(str) {
     var originalLength = str.length;
     var strippedStr = str.replace(/^[ \t]+/, "");
@@ -370,4 +387,77 @@ var tokenizePython = function(str) {
         }
     }
     return result;
+};
+
+var getResultFileContent = function() {
+    var strings = editedFileContent.split(lineSeparator);
+    var begin = strings.slice(0, editorRangeSelectStart - 1);
+    var rangeEnd = editorRangeSelectEnd;
+    if (rangeEnd == null) {
+        rangeEnd = editorRangeSelectStart;
+    }
+    var end = strings.slice(rangeEnd);
+    var middle = aceEditorMain.session.doc.getAllLines();
+    var content = begin.concat(middle).concat(end);
+    resultFileContent = content.join(lineSeparator);
+    return resultFileContent;
+};
+
+// Получает предыдущие строки
+var getPreviousTokens = function(cursorPosition) {
+    var result = [];
+    var pos = cursorPosition;
+    var lines = aceEditorMain.session.doc.getAllLines();
+    var line = lines[pos.row];
+    var tokens = tokenizePython(line);
+    for (var  i = 0; i < tokens.length; i++) {
+        if (tokens[i][0] <= pos.column) {
+            result.push(line.substring(tokens[i][0], tokens[i][1]));
+        }
+    }
+    return result;
+};
+
+//  Посылает запрос на автодополнение
+var sendAutocompleteRequest = function() {
+    var chatId = requestPeerID(globalCurrentDialog);
+    var branchId = branchName;
+    var row =  editorCursorPosition.row;
+    var column = editorCursorPosition.column;
+    var line = editorCursorPosition.row + editorRangeSelectStart;
+    var position = editorCursorPosition.column;
+    var content = b64EncodeUnicode(getResultFileContent());
+    var tokens = getPreviousTokens(editorCursorPosition);
+    $.ajax({
+        "method": "POST",
+        "dataType": "json",
+        "url": "/reviewgram/get_autocompletions/",
+        'contentType': 'application/json',
+        "data": JSON.stringify({
+            "tokens": tokens,
+            "content": content,
+            "line": line,
+            "position": position,
+            "chatId": chatId,
+            "branchId": branchId
+        }),
+        "success": function(o) {
+            if ((row == editorCursorPosition.row) && (column == editorCursorPosition.column)) {
+                $(".autocompletion .body").html("");
+                for (var i = 0; i < o.length; i++) {
+                    $("<button />", {
+                        'class': 'btn btn-md',
+                        'text': o[i]['name_with_symbols']
+                    }).attr("data-row", row)
+                    .attr("data-column", column)
+                    .attr("data-complete-type", o[i]['append_type'])
+                    .attr("data-complete", o[i]['complete'])
+                    .appendTo(".autocompletion .body");
+                }
+            }
+        },
+        "error": function(xhr) {
+
+        }
+    });
 };
