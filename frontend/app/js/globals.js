@@ -174,7 +174,9 @@ var editorEditedPart = "";
 var namesToModes = {".py": "ace/mode/python"};
 var lineSeparator = "";
 var resultFileContent = "";
-
+var editedSoundFileBlob = null;
+var globalRecorder = null;
+var currentRecorderId = 0;
 
 var fileNameToAceMode = function(fileName) {
     var name = fileName.toLowerCase();
@@ -188,6 +190,14 @@ var fileNameToAceMode = function(fileName) {
     return "ace/mode/plain_text";
 };
 
+function uint8ArrayToBase64( bytes ) {
+    var len = bytes.byteLength;
+    for (var i = 0; i < len; i++) {
+        binary += String.fromCharCode( bytes[ i ] );
+    }
+    return window.btoa( binary );
+}
+
 // Инициализация виджета микрофона
 // TODO: Нормальная работа
 var initMicrophoneWidgets = function() {
@@ -196,20 +206,54 @@ var initMicrophoneWidgets = function() {
     for (var i = 0; i < e.length; i++) {
         $(e[i]).attr("specific-id", i);
     }
+    if (globalRecorder == null) {
+        globalRecorder = new Recorder();
+        globalRecorder.ondataavailable = function( typedArray ) {
+          var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
+          var fileName = new Date().toISOString() + ".wav";
+
+          dataBlob.arrayBuffer().then(function(o) { editedSoundFileBlob = new Uint8Array(o); });
+          /*
+          var url = URL.createObjectURL( dataBlob );
+
+          var audio = document.createElement('audio');
+          audio.controls = true;
+          audio.src = url;
+
+          var link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          link.innerHTML = link.download;
+
+          var li = document.createElement('li');
+          li.appendChild(link);
+          li.appendChild(audio);
+
+          recordingslist.appendChild(li);
+          */
+        };
+    }
     e.click(function() {
+        currentRecorderId = parseInt($(this).attr('specific-id'));
         if ($(this).hasClass("in-process")) {
             $(this).removeClass("in-process");
             $(this).addClass("recognizing");
             $(this).find(".label").html("Производится распознавание");
+            globalRecorder.stop();
             // TODO: callback here
         } else {
             if ($(this).hasClass("recognizing")) {
                 $(this).removeClass("recognizing");
                 $(this).find(".label").html("Нажмите, чтобы ввести голосом");
+                $(".btn-next-tab").removeAttr("disabled");
                 // TODO: callback here
             } else {
                 $(this).addClass("in-process");
                 $(this).find(".label").html("Введите команду");
+                globalRecorder.start().catch(function(e){
+                    window.alert( e.message );
+                });
+                $(".btn-next-tab").attr("disabled", "disabled");
                 // TODO: callback here
             }
         }
