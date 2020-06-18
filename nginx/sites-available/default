@@ -49,9 +49,21 @@ server {
 			# First attempt to serve request as file, then
 			# as directory, then fall back to displaying a 404.
 			try_files $uri $uri/ =404;
-					
+
 			auth_basic "Dev Area";
 			auth_basic_user_file /etc/nginx/.htpasswd;
+		}
+
+		location /github_api {
+			valid_referers {DOMAIN};
+			if ($invalid_referer) {
+					return 403;
+			}
+			rewrite /github_api/(.*) /$1 break;
+			proxy_redirect     off;
+			proxy_pass https://api.github.com;
+			proxy_set_header Host api.github.com;
+			expires off;
 		}
 
 		location /pluto {
@@ -246,9 +258,21 @@ server {
 			# First attempt to serve request as file, then
 			# as directory, then fall back to displaying a 404.
 			try_files $uri $uri/ =404;
-					
+
 					auth_basic "Dev Area";
 					auth_basic_user_file /etc/nginx/.htpasswd;
+		}
+
+		location /github_api {
+			valid_referers {DOMAIN};
+			if ($invalid_referer) {
+					return 403;
+			}
+			rewrite /github_api/(.*) /$1 break;
+			proxy_redirect     off;
+			proxy_pass https://api.github.com;
+			proxy_set_header Host api.github.com;
+			expires off;
 		}
 
 		location /pluto {

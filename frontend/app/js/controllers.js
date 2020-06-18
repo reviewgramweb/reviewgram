@@ -4501,7 +4501,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               "dataType": "json",
               "username": repoSettings.user,
               "password": repoSettings.password,
-              "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+              "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
               "success": function(o) {
                   console.log(o);
                   var result = "";
@@ -4561,7 +4561,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
              	"dataType": "json",
              	"username": repoSettings.user,
              	"password": repoSettings.password,
-             	"url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/commits/" + lastCommit,
+             	"url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/commits/" + lastCommit,
              	"success": function(o) {
              		console.log(o);
              		var error = true;
@@ -5099,7 +5099,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               "dataType": "json",
               "username": repoSettings.user,
               "password": repoSettings.password,
-              "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches/" + encodeURIComponent(branchName),
+              "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches/" + encodeURIComponent(branchName),
               "success": function(o) {
                   var error = true;
                   if ('commit' in o) {
@@ -5203,7 +5203,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               "dataType": "json",
               "username": repoSettings.user,
               "password": repoSettings.password,
-              "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/contents/" + encodeURIComponent(editedFileName),
+              "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/contents/" + encodeURIComponent(editedFileName),
               'contentType': 'application/json',
               "data": JSON.stringify({
                   "message": "Быстрое исправление через Reviewgram",
@@ -5263,7 +5263,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                   "dataType": "json",
                   "username": repoSettings.user,
                   "password": repoSettings.password,
-                  "url": "https://api.github.com/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+                  "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
                   "success": function(o) {
                       $("#rcommit_preloader").css('display', 'none');
                       $("#rcommit_branch_select").css('display', 'block');
