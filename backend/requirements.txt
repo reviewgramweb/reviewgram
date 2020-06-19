@@ -1,7 +1,7 @@
 flask
 pyflakes
 jedi
-flask
 python-dotenv
 PyMySQL
 PyCrypto
+google-cloud-speech
