@@ -207,31 +207,36 @@ var initMicrophoneWidgets = function() {
         $(e[i]).attr("specific-id", i);
     }
     if (globalRecorder == null) {
-        globalRecorder = new Recorder();
-        globalRecorder.ondataavailable = function( typedArray ) {
-          var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
-          var fileName = new Date().toISOString() + ".wav";
+        try {
+            globalRecorder = new Recorder();
+            globalRecorder.ondataavailable = function( typedArray ) {
+              var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
+              var fileName = new Date().toISOString() + ".wav";
 
-          dataBlob.arrayBuffer().then(function(o) { editedSoundFileBlob = new Uint8Array(o); });
-          /*
-          var url = URL.createObjectURL( dataBlob );
+              dataBlob.arrayBuffer().then(function(o) { editedSoundFileBlob = new Uint8Array(o); });
+              /*
+              var url = URL.createObjectURL( dataBlob );
 
-          var audio = document.createElement('audio');
-          audio.controls = true;
-          audio.src = url;
+              var audio = document.createElement('audio');
+              audio.controls = true;
+              audio.src = url;
 
-          var link = document.createElement('a');
-          link.href = url;
-          link.download = fileName;
-          link.innerHTML = link.download;
+              var link = document.createElement('a');
+              link.href = url;
+              link.download = fileName;
+              link.innerHTML = link.download;
 
-          var li = document.createElement('li');
-          li.appendChild(link);
-          li.appendChild(audio);
+              var li = document.createElement('li');
+              li.appendChild(link);
+              li.appendChild(audio);
 
-          recordingslist.appendChild(li);
-          */
-        };
+              recordingslist.appendChild(li);
+              */
+            };
+        } catch(exc) {
+            // Если голосовой ввод не поддерживается браузером - выключаем его.
+            e.remove();
+        }
     }
     e.click(function() {
         currentRecorderId = parseInt($(this).attr('specific-id'));
