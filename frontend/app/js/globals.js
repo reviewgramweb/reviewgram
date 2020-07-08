@@ -202,7 +202,11 @@ function uint8ArrayToBase64( bytes ) {
 // TODO: Нормальная работа
 var initMicrophoneWidgets = function() {
     var e = $(".reviewgram-microphone-widget");
-    e.html("<div class=\"button-wrapper\"><div class=\"button\"></div><div class=\"label\">Нажмите, чтобы ввести голосом</div></div>");
+    var content = "<div class=\"button-wrapper common write\"><div class=\"button common\"></div></div>";
+    content += "<div class=\"button-wrapper common append\"><div class=\"button common plus\"></div></div>";
+    content += "<div class=\"label\">&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить</div>";
+    content += "<a href=\"/dictationhelp.html\" target=\"_blank\"><div class=\"button-wrapper\"><div class=\"button help\"></div></div></a>";
+    e.html(content);
     for (var i = 0; i < e.length; i++) {
         $(e[i]).attr("specific-id", i);
     }
@@ -238,25 +242,39 @@ var initMicrophoneWidgets = function() {
             e.remove();
         }
     }
-    e.click(function() {
+    e.find(".button-wrapper.common").click(function() {
         currentRecorderId = parseInt($(this).attr('specific-id'));
-        if ($(this).hasClass("in-process")) {
-            $(this).removeClass("in-process");
-            $(this).addClass("recognizing");
-            $(this).find(".label").html("Производится распознавание");
+        var parent = $(this).closest(".reviewgram-microphone-widget");
+        parent.removeClass("append").removeClass("write");
+        if ($(this).hasClass("write"))
+        {
+            parent.find(".button-wrapper.common.append").css("display", "none");
+            parent.addClass("write");
+        }
+        else
+        {
+          parent.find(".button-wrapper.common.write").css("display", "none");
+          parent.addClass("append");
+        }
+        if (parent.hasClass("in-process")) {
+            parent.removeClass("in-process");
+            parent.addClass("recognizing");
+            parent.find(".label").html("Производится<br/> распознавание");
             globalRecorder.stop();
             // TODO: callback here
         } else {
-            if ($(this).hasClass("recognizing")) {
-                $(this).removeClass("recognizing");
-                $(this).find(".label").html("Нажмите, чтобы ввести голосом");
+            if (parent.hasClass("recognizing")) {
+                parent.removeClass("recognizing");
+                parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
                 $(".btn-next-tab").removeAttr("disabled");
+                parent.find(".button-wrapper.common").css("display", "inline-block");
                 // TODO: callback here
             } else {
-                $(this).addClass("in-process");
-                $(this).find(".label").html("Введите команду");
-                globalRecorder.start().catch(function(e){
-                    window.alert( e.message );
+                parent.addClass("in-process");
+                parent.find(".label").html("Идёт запись");
+                globalRecorder.start().catch(function(exc){
+                    window.alert( exc.message );
+                    parent.remove();
                 });
                 $(".btn-next-tab").attr("disabled", "disabled");
                 // TODO: callback here

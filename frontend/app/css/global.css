@@ -22,11 +22,16 @@
 }
 
 
-.reviewgram-microphone-widget .button  {
+.reviewgram-microphone-widget .button.common  {
     display: inline-block;
     width: 40px;
     height: 38px;
     background: url(/img/icons/mic.png)
+}
+
+
+.reviewgram-microphone-widget .button.common.plus  {
+    background: url(/img/icons/micplus.png)
 }
 
 .reviewgram-microphone-widget .button-wrapper {
@@ -34,19 +39,28 @@
     width: 40px;
     height: 38px;
     border-radius: 50%;
+    position: relative;
+    margin-right: 3px;
     background-color: rgb(73,194,134);
 }
 
-.reviewgram-microphone-widget.in-process .button  {
-    background: url(/img/icons/stop.png)
+.reviewgram-microphone-widget.in-process .button.common  {
+    background: url(/img/icons/stop.png) !important;
 }
 
-.reviewgram-microphone-widget.recognizing .button-wrapper {
+.reviewgram-microphone-widget.recognizing .button-wrapper.common {
     background-color: rgb(220, 220, 220);
 }
 
-.reviewgram-microphone-widget.recognizing .button  {
-    background:  url(/img/icons/stop2.png)
+.reviewgram-microphone-widget.recognizing .button.common  {
+    background:  url(/img/icons/stop2.png) !important;
+}
+
+.reviewgram-microphone-widget .button.help  {
+    display: inline-block;
+    width: 40px;
+    height: 38px;
+    background: url(/img/icons/help.png)
 }
 
 .reviewgram-microphone-widget .label {
@@ -54,11 +68,20 @@
     color: #000;
     font-weight: normal;
     padding: 0;
-    top: 14px;
-    position: absolute;
+    top: -5px;
+    position: relative;
     line-break: auto;
     padding-left: 10px;
+    padding-right: 5px;
     font-size: 10px;
+}
+
+.reviewgram-microphone-widget.in-process  .label {
+    top: -16px;
+}
+
+.reviewgram-microphone-widget.recognizing  .label {
+    top: -11px;
 }
 
 
