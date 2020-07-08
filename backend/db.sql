@@ -36,6 +36,7 @@ CREATE TABLE repository_settings(
     REPO_SAME_NAME TEXT,
     USER TEXT,
     PASSWORD TEXT,
+    LANG_ID BIGINT,
     KEY IX_RS_CHAT_ID (CHAT_ID),
     PRIMARY KEY(ID)
 ) ENGINE=InnoDB
@@ -70,11 +71,13 @@ CREATE TABLE repository_cache_storage_table(
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
+UPDATE `repository_autocompletion_lexemes` SET `LANG_ID`=1;
 CREATE TABLE repository_autocompletion_lexemes(
     ID BIGINT NOT NULL AUTO_INCREMENT,
     ROW_ID BIGINT,
     LEXEME_ID BIGINT,
     TEXT VARCHAR(1024),
+    LANG_ID BIGINT,
     KEY IX_RAL_ROW_ID (ROW_ID),
     KEY IX_RAL_LEXEME_ID (LEXEME_ID),
     KEY IX_RAL_TEXT (TEXT(512)),
@@ -82,6 +85,17 @@ CREATE TABLE repository_autocompletion_lexemes(
 ) ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE languages(
+    ID BIGINT NOT NULL AUTO_INCREMENT,
+    NAME VARCHAR(1024),
+    PRIMARY KEY(ID)
+) ENGINE=InnoDB
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+INSERT INTO languages(NAME) VALUES  ('Python');
+
 
 DELIMITER $$
 CREATE FUNCTION levenshtein( s1 VARCHAR(1024), s2 VARCHAR(1024) )
