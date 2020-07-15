@@ -454,47 +454,8 @@ angular.module('myApp.controllers', ['myApp.i18n'])
   })
 
   .controller('AppIMController', function ($q, qSync, $scope, $location, $routeParams, $modal, $rootScope, $modalStack, MtpApiManager, AppUsersManager, AppChatsManager, AppMessagesManager, AppPeersManager, ContactsSelectService, ChangelogNotifyService, ErrorService, AppRuntimeManager, HttpsMigrateService, LayoutSwitchService, LocationParamsService, AppStickersManager, ApiUpdatesManager) {
-    $scope.$on('$routeUpdate', updateCurDialog)
-    // Метод чтобы отправлять сообщения боту
-    sendMessageRequest = (function(AppMessagesManager, AppPeersManager, ApiUpdatesManager, text, fun)  {
-        if ((typeof fun === "undefined")  || (fun === null)) {
-            fun = function() { console.log("Done!"); }
-        }
-        $.ajax({
-            "url": "/reviewgram/bot_username/",
-            "dataType": "text",
-            "method": "GET",
-            "success": function(result) {
-                console.log(result);
-                AppPeersManager.resolveUsername(result).then(function (peerID) {
-                    console.log(peerID);
-                    var sentRequestOptions = {}
-                    var apiPromise = MtpApiManager.invokeApi('messages.sendMessage', {
-                      flags: 128,
-                      peer: AppPeersManager.getInputPeerByID(peerID),
-                      message: text,
-                      random_id: [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)],
-                      reply_to_msg_id: 0,
-                      entities: []
-                    }, sentRequestOptions);
-                    apiPromise.then(function() {
-                       console.log("Sent!");
-                       AppMessagesManager.flushHistory(peerID).then(function() {
-                           fun();
-                       });
-                    });
-                });
-            },
-            "error" : function() {
-                setTimeout(sendMessageRequest, 5000);
-            }
-        });
-    }).bind(this, AppMessagesManager, AppPeersManager, ApiUpdatesManager);
-
-    requestPeerID = (function(AppPeersManager, peerString) {
-        return AppPeersManager.getPeerID(peerString);
-    }).bind(this,  AppPeersManager);
-
+    $scope.$on('$routeUpdate', updateCurDialog);
+    reviewgram.initWebogramAdapter(AppMessagesManager, AppPeersManager, MtpApiManager);
     var pendingParams = false
     var pendingAttachment = false
     $scope.$on('history_focus', function (e, peerData) {
@@ -639,8 +600,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
       } else if ($scope.search.query) {
         $scope.searchClear()
       }
-      globalCurrentDialog = peerString;
-      console.log(globalCurrentDialog);
+      reviewgram.setCurrentDialog(peerString);
       var peerID = AppPeersManager.getPeerID(peerString)
       var converted = AppMessagesManager.convertMigratedPeer(peerID)
       if (converted) {
@@ -719,8 +679,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
         peerStringPromise = qSync.when($routeParams.p)
       }
       peerStringPromise.then(function (peerString) {
-        console.log(peerString);
-        globalCurrentDialog = peerString;
+        reviewgram.setCurrentDialog(peerString);
         $scope.curDialog = angular.extend({
           peer: peerString,
           peerID: AppPeersManager.getPeerID(peerString || '')
@@ -1270,7 +1229,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
             scope: $scope,
             windowClass: 'reviewgram_repo_settings_all_modal_window mobile_modal'
         });
-        getRepoSettings(globalCurrentDialog, function(o) {
+        getRepoSettings(reviewgram.getCurrentDialog(), function(o) {
             $("#repoUserName").val(o.repo_user_name);
             $("#repoSameName").val(o.repo_same_name);
             $("#user").val(o.user);
@@ -4490,7 +4449,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                     $("#rsettings_error").find(".reviewgram-error").html("Не удалось сохранить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат и попробуйте ещё раз.");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
               };
-              setRepoSettings(globalCurrentDialog, fun, repoUserName, repoSameName, user, password, on404);
+              setRepoSettings(reviewgram.getCurrentDialog(), fun, repoUserName, repoSameName, user, password, on404);
           }
       }
   })
@@ -4761,7 +4720,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                aceEditorMain.setValue(editorEditedPart);
                aceEditorMain.session.selection.on('changeCursor', function(o) {
                    var cursorPosition = aceEditorMain.getCursorPosition();
-                   editorCursorPosition = cursorPosition;
+                   reviewgram._mainEditorCursorPosition = cursorPosition;
                    if (editorAutocompleteSendTimeoutHandle !== null) {
                        clearTimeout(editorAutocompleteSendTimeoutHandle);
                    }
@@ -5158,7 +5117,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
               "username": repoSettings.user,
               "password": repoSettings.password,
               "data": {
-                  "chatId" : requestPeerID(globalCurrentDialog),
+                  "chatId" : reviewgram.getCurrentDialogPeerID(),
                   "uuid": uuid,
               },
               "url": "/reviewgram/try_lock/",
@@ -5222,7 +5181,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
                           var text = " отправил правку " + resultUrl + " в репозиторий " + repoUrl;
                           var apiPromise = MtpApiManager.invokeApi('messages.sendMessage', {
                             flags: 128,
-                            peer: AppPeersManager.getInputPeerByID(AppPeersManager.getPeerID(globalCurrentDialog)),
+                            peer: AppPeersManager.getInputPeerByID(AppPeersManager.getPeerID(reviewgram.getCurrentDialog())),
                             message: text,
                             random_id: [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)],
                             reply_to_msg_id: 0,
@@ -5328,7 +5287,7 @@ angular.module('myApp.controllers', ['myApp.i18n'])
           $scope.fetchBranchesList();
       };
       setTimeout(function() {
-          getRepoSettings(globalCurrentDialog, function(o) {
+          getRepoSettings(reviewgram.getCurrentDialog(), function(o) {
               initMicrophoneWidgets();
               repoSettings = o;
               if (o.repo_user_name.length == 0 || o.repo_same_name.length == 0 || o.user == 0 || o.password == 0) {

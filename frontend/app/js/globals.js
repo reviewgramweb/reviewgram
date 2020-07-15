@@ -1,9 +1,5 @@
-var globalCurrentDialog = "";
-var sendMessageRequest = null;
-var requestPeerID = null;
-var tokenLiveCountMinutes = 150;
-var secondsInMinute = 60;
 var isEditRequestRunning = false;
+var reviewgram = new Reviewgram();
 
 function makeBasicAuth(user, password) {
   var tok = user + ':' + password;
@@ -30,30 +26,7 @@ var largeUuidv4 = function() {
   return (new Date().getTime()) + "-" + result;
 };
 
-// Получение/сохранение идентификатора
-var fetchOrCreateUUID = function(fun) {
-    var uuid = localStorage.getItem("reviewgram_uuid");
-    var timestamp = parseInt(localStorage.getItem("reviewgram_uuid_timestamp"));
-    if ((uuid === null) || (timestamp === null)) {
-        uuid = largeUuidv4();
-        timestamp = parseInt((new Date()).getTime() / 1000.0);
-        localStorage.setItem("reviewgram_uuid", uuid);
-        localStorage.setItem("reviewgram_uuid_timestamp", timestamp);
-        fun(true, uuid, timestamp);
-    } else {
-        currentTimestamp = parseInt((new Date()).getTime() / 1000.0);
-        if (currentTimestamp - timestamp >= tokenLiveCountMinutes * secondsInMinute) {
-            uuid = largeUuidv4();
-            timestamp = currentTimestamp;
-            localStorage.setItem("reviewgram_uuid", uuid);
-            localStorage.setItem("reviewgram_uuid_timestamp", timestamp);
-            fun(true, uuid, timestamp);
-        } else {
-            fun(false, uuid, timestamp);
-        }
-    }
-};
-
+// Повтореый запрос для получения данных по AJAX
 var makeRepeatedRequest = function(options, success)  {
     var ownOptions = options;
     ownOptions["success"] = success;
@@ -80,7 +53,7 @@ var startRequestForRepoInformation = function(chatId, fun)  {
                 "url": "/reviewgram/register_chat_id_for_token/",
                 "dataType": "text",
                 "data": {
-                    "chatId" : requestPeerID(chatId),
+                    "chatId" : reviewgram.requestPeerID(chatId),
                     "uuid": uuid,
                 },
                 "method": "POST",
@@ -88,7 +61,7 @@ var startRequestForRepoInformation = function(chatId, fun)  {
         }).bind(null, fun);
         if (isNew) {
             var text = btoa(uuid);
-            sendMessageRequest(text, wrapper);
+            reviewgram.sendMessageToBot(text, wrapper);
         } else {
             wrapper();
         }
@@ -107,7 +80,7 @@ var getRepoSettings = function(chatId, fun, on404)  {
                 "url": "/reviewgram/get_repo_settings/",
                 "dataType": "json",
                 "data": {
-                    "chatId" : requestPeerID(chatId),
+                    "chatId" : reviewgram.requestPeerID(chatId),
                     "uuid": uuid,
                 },
                 "method": "GET",
@@ -116,7 +89,7 @@ var getRepoSettings = function(chatId, fun, on404)  {
         }).bind(null, fun);
         if (isNew) {
             var text = btoa(uuid);
-            sendMessageRequest(text, wrapper);
+            reviewgram.sendMessageToBot(text, wrapper);
         } else {
             wrapper();
         }
@@ -131,7 +104,7 @@ var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, pa
                 "url": "/reviewgram/set_repo_settings/",
                 "dataType": "json",
                 "data": {
-                    "chatId" : requestPeerID(chatId),
+                    "chatId" : reviewgram.requestPeerID(chatId),
                     "uuid": uuid,
                     "repoUserName": repoUserName,
                     "repoSameName": repoSameName,
@@ -144,7 +117,7 @@ var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, pa
         }).bind(null, fun);
         if (isNew) {
             var text = btoa(uuid);
-            sendMessageRequest(text, wrapper);
+            reviewgram.sendMessageToBot(text, wrapper);
         } else {
             wrapper();
         }
@@ -164,12 +137,8 @@ var rangeEnd = 0;
 var aceEditorForRangeSelect = null;
 var aceEditorMain = null;
 var allowedFileExtensions = [".txt", ".py"];
-var editorRangeSelectStart = null;
-var editorRangeSelectEnd = null;
-var editorRangeSelectLastClick = null;
 var editorCursorPosition = null;
 var editorAutocompleteSendTimeoutHandle = null;
-var lineSelectLimit = 10;
 var editorEditedPart = "";
 var namesToModes = {".py": "ace/mode/python"};
 var lineSeparator = "";
@@ -178,7 +147,7 @@ var editedSoundFileBlob = null;
 var globalRecorder = null;
 var currentRecorderId = 0;
 
-var fileNameToAceMode = function(fileName) {
+function fileNameToAceMode(fileName) {
     var name = fileName.toLowerCase();
     for (var  key in namesToModes) {
         if (namesToModes.hasOwnProperty(key)) {
@@ -197,121 +166,6 @@ function uint8ArrayToBase64( bytes ) {
     }
     return window.btoa( binary );
 }
-
-// Инициализация виджета микрофона
-// TODO: Нормальная работа
-var initMicrophoneWidgets = function() {
-    var e = $(".reviewgram-microphone-widget");
-    var content = "<div class=\"button-wrapper common write\"><div class=\"button common\"></div></div>";
-    content += "<div class=\"button-wrapper common append\"><div class=\"button common plus\"></div></div>";
-    content += "<div class=\"label\">&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить</div>";
-    content += "<a href=\"/dictationhelp.html\" target=\"_blank\"><div class=\"button-wrapper\"><div class=\"button help\"></div></div></a>";
-    e.html(content);
-    for (var i = 0; i < e.length; i++) {
-        $(e[i]).attr("specific-id", i);
-    }
-    if (globalRecorder == null) {
-        try {
-            globalRecorder = new Recorder();
-            globalRecorder.ondataavailable = function( typedArray ) {
-              var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
-              var fileName = new Date().toISOString() + ".wav";
-
-              dataBlob.arrayBuffer().then(function(o) { editedSoundFileBlob = new Uint8Array(o); });
-              /*
-              var url = URL.createObjectURL( dataBlob );
-
-              var audio = document.createElement('audio');
-              audio.controls = true;
-              audio.src = url;
-
-              var link = document.createElement('a');
-              link.href = url;
-              link.download = fileName;
-              link.innerHTML = link.download;
-
-              var li = document.createElement('li');
-              li.appendChild(link);
-              li.appendChild(audio);
-
-              recordingslist.appendChild(li);
-              */
-            };
-        } catch(exc) {
-            // Если голосовой ввод не поддерживается браузером - выключаем его.
-            e.remove();
-        }
-    }
-    e.find(".button-wrapper.common").click(function() {
-        currentRecorderId = parseInt($(this).attr('specific-id'));
-        var parent = $(this).closest(".reviewgram-microphone-widget");
-        parent.removeClass("append").removeClass("write");
-        if ($(this).hasClass("write"))
-        {
-            parent.find(".button-wrapper.common.append").css("display", "none");
-            parent.addClass("write");
-        }
-        else
-        {
-          parent.find(".button-wrapper.common.write").css("display", "none");
-          parent.addClass("append");
-        }
-        if (parent.hasClass("in-process")) {
-            parent.removeClass("in-process");
-            parent.addClass("recognizing");
-            parent.find(".label").html("Производится<br/> распознавание");
-            globalRecorder.stop();
-            // TODO: callback here
-        } else {
-            if (parent.hasClass("recognizing")) {
-                parent.removeClass("recognizing");
-                parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
-                $(".btn-next-tab").removeAttr("disabled");
-                parent.find(".button-wrapper.common").css("display", "inline-block");
-                // TODO: callback here
-            } else {
-                parent.addClass("in-process");
-                parent.find(".label").html("Идёт запись");
-                globalRecorder.start().catch(function(exc){
-                    window.alert( exc.message );
-                    parent.remove();
-                });
-                $(".btn-next-tab").attr("disabled", "disabled");
-                // TODO: callback here
-            }
-        }
-    });
-}
-
-
-$("body").on("click", ".reviewgram-select-box li", function() {
-    $(this).closest(".reviewgram-select-box").find("li").removeClass("selected");
-    $(this).addClass("selected");
-});
-
-var makeSearchSubstringHandler = function(dependentSelector) {
-    return function() {
-        var a = $(this).val().trim();
-        var elements = $(dependentSelector);
-        for (var i = 0; i < elements.length; i++) {
-            var element = $(elements[i]);
-            var name = element.attr("data-name");
-            var match = true;
-            if (a.length > 0) {
-                match = (name.indexOf(a) != -1);
-            }
-            if (match) {
-                element.removeClass("hidden").css("display", "block");
-            } else {
-                element.addClass("hidden").css("display", "none");
-            }
-        }
-    }
-};
-
-$("body").on("cut paste keyup", "#branchNameSearch", makeSearchSubstringHandler("#branchName ul li"));
-$("body").on("cut paste keyup", "#commitFileSearch", makeSearchSubstringHandler("#commitFile ul li"));
-
 
 function escapeHtml(unsafe) {
     return unsafe
@@ -348,183 +202,4 @@ function isMatchesAllowedExtensions(fileName) {
     }
     return false;
 }
-
-
-function selectAceGutterRange(parent, start, end) {
-    var list = $(parent + " .ace_gutter-cell");
-    for (var i = 0; i < list.length; i++) {
-        var e  = $(list[i]);
-        var no = parseInt(e.text());
-        if (no >= start && no <= end) {
-            e.addClass("selected");
-        } else {
-            e.removeClass("selected");
-        }
-    }
-}
-
-$("body").on("click", "#editor_range_select .ace_gutter-cell", function() {
-    var currentLineNo = parseInt($(this).text());
-    if (editorRangeSelectStart == null) {
-        editorRangeSelectStart = currentLineNo;
-        $(this).addClass("selected");
-    } else {
-        if (Math.abs(currentLineNo - editorRangeSelectLastClick) < lineSelectLimit) {
-            if (currentLineNo < editorRangeSelectLastClick) {
-                editorRangeSelectStart = currentLineNo;
-                editorRangeSelectEnd = editorRangeSelectLastClick;
-            } else {
-                editorRangeSelectStart = editorRangeSelectLastClick;
-                editorRangeSelectEnd = currentLineNo;
-            }
-        } else {
-            if (currentLineNo < editorRangeSelectLastClick) {
-                editorRangeSelectStart = currentLineNo;
-                editorRangeSelectEnd = currentLineNo + lineSelectLimit - 1;
-            } else {
-                editorRangeSelectStart = currentLineNo - lineSelectLimit + 1;
-                editorRangeSelectEnd = currentLineNo;
-            }
-        }
-        selectAceGutterRange("#editor_range_select", editorRangeSelectStart, editorRangeSelectEnd);
-    }
-    editorRangeSelectLastClick = currentLineNo;
-});
-
-$("body").on("click", ".edit-tab-container .header", function() {
-    var parent = $(this).parent();
-    if (parent.hasClass("selected")) {
-        parent.removeClass("selected");
-        parent.find(".section-arrow").removeClass("toggled").removeClass("arrow-down").addClass("arrow-right");
-    } else {
-        parent.addClass("selected");
-        parent.find(".section-arrow").addClass("toggled").addClass("arrow-down").removeClass("arrow-right");
-    }
-});
-
-$("body").on("click", ".autocompletion .body .btn.btn-md", function() {
-    var me = $(this);
-    var row = parseInt(me.attr("data-row"));
-    var column = parseInt(me.attr("data-column"));
-    var completeType = me.attr("data-complete-type");
-    var complete = me.attr("data-complete");
-    if (completeType != "no_space") {
-        complete = " " + completeType;
-    }
-    aceEditorMain.session.insert({"row": row, "column": column}, complete);
-    aceEditorMain.focus();
-    $(".autocompletion .body").html("");
-});
-
-setInterval(function() {
-    if ($("#editor_range_select").length != 0) {
-        if (editorRangeSelectStart != null) {
-            if (editorRangeSelectEnd != null) {
-                selectAceGutterRange("#editor_range_select", editorRangeSelectStart, editorRangeSelectEnd);
-            } else {
-                selectAceGutterRange("#editor_range_select", editorRangeSelectStart, editorRangeSelectStart);
-            }
-        }
-    }
-}, 300);
-
-// Разбивает строки на токены
-var tokenizePython = function(str) {
-    var originalLength = str.length;
-    var strippedStr = str.replace(/^[ \t]+/, "");
-    var newLen = strippedStr.length
-    var offset = originalLength - newLen;
-    var getToken = filbert.tokenize(strippedStr, {"locations" : true});
-    var result = [];
-    var error = false;
-    var end = false;
-    var lastEnd = 0;
-    while (!error && !end) {
-        try {
-            var tmp = getToken();
-            if (tmp.type.type == "eof") {
-                end = true;
-            } else {
-                lastEnd = tmp.end;
-                result.push([tmp.start + offset, tmp.end + offset]);
-            }
-        } catch (e) {
-            result.push([lastEnd + offset + 1, originalLength]);
-            error = true;
-        }
-    }
-    return result;
-};
-
-var getResultFileContent = function() {
-    var strings = editedFileContent.split(lineSeparator);
-    var begin = strings.slice(0, editorRangeSelectStart - 1);
-    var rangeEnd = editorRangeSelectEnd;
-    if (rangeEnd == null) {
-        rangeEnd = editorRangeSelectStart;
-    }
-    var end = strings.slice(rangeEnd);
-    var middle = aceEditorMain.session.doc.getAllLines();
-    var content = begin.concat(middle).concat(end);
-    resultFileContent = content.join(lineSeparator);
-    return resultFileContent;
-};
-
-// Получает предыдущие строки
-var getPreviousTokens = function(cursorPosition) {
-    var result = [];
-    var pos = cursorPosition;
-    var lines = aceEditorMain.session.doc.getAllLines();
-    var line = lines[pos.row];
-    var tokens = tokenizePython(line);
-    for (var  i = 0; i < tokens.length; i++) {
-        if (tokens[i][0] <= pos.column) {
-            result.push(line.substring(tokens[i][0], tokens[i][1]));
-        }
-    }
-    return result;
-};
-
-//  Посылает запрос на автодополнение
-var sendAutocompleteRequest = function() {
-    var chatId = requestPeerID(globalCurrentDialog);
-    var branchId = branchName;
-    var row =  editorCursorPosition.row;
-    var column = editorCursorPosition.column;
-    var line = editorCursorPosition.row + editorRangeSelectStart;
-    var position = editorCursorPosition.column;
-    var content = b64EncodeUnicode(getResultFileContent());
-    var tokens = getPreviousTokens(editorCursorPosition);
-    $.ajax({
-        "method": "POST",
-        "dataType": "json",
-        "url": "/reviewgram/get_autocompletions/",
-        'contentType': 'application/json',
-        "data": JSON.stringify({
-            "tokens": tokens,
-            "content": content,
-            "line": line,
-            "position": position,
-            "chatId": chatId,
-            "branchId": branchId
-        }),
-        "success": function(o) {
-            if ((row == editorCursorPosition.row) && (column == editorCursorPosition.column)) {
-                $(".autocompletion .body").html("");
-                for (var i = 0; i < o.length; i++) {
-                    $("<button />", {
-                        'class': 'btn btn-md',
-                        'text': o[i]['name_with_symbols']
-                    }).attr("data-row", row)
-                    .attr("data-column", column)
-                    .attr("data-complete-type", o[i]['append_type'])
-                    .attr("data-complete", o[i]['complete'])
-                    .appendTo(".autocompletion .body");
-                }
-            }
-        },
-        "error": function(xhr) {
-
-        }
-    });
-};
+reviewgram.initReviewgramEvents();
