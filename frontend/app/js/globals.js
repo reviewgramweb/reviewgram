@@ -1,5 +1,5 @@
-var isEditRequestRunning = false;
 var reviewgram = new Reviewgram();
+reviewgram.initReviewgramEvents();
 
 function makeBasicAuth(user, password) {
   var tok = user + ':' + password;
@@ -44,86 +44,7 @@ var makeRepeatedRequest = function(options, success)  {
     $.ajax(ownOptions);
 };
 
-
-// Начало для получения данных из чата для работы системы
-var startRequestForRepoInformation = function(chatId, fun)  {
-    fetchOrCreateUUID(function(isNew, uuid, timestamp) {
-        var wrapper = (function(fun) {
-            makeRepeatedRequest({
-                "url": "/reviewgram/register_chat_id_for_token/",
-                "dataType": "text",
-                "data": {
-                    "chatId" : reviewgram.requestPeerID(chatId),
-                    "uuid": uuid,
-                },
-                "method": "POST",
-            }, fun);
-        }).bind(null, fun);
-        if (isNew) {
-            var text = btoa(uuid);
-            reviewgram.sendMessageToBot(text, wrapper);
-        } else {
-            wrapper();
-        }
-    });
-};
-
-// Получение настроек репозитория
-var getRepoSettings = function(chatId, fun, on404)  {
-    fetchOrCreateUUID(function(isNew, uuid, timestamp) {
-        var wrapper = (function(fun) {
-            var wrapInner = function(o) {
-                o.password = atob(o.password);
-                fun(o);
-            };
-            makeRepeatedRequest({
-                "url": "/reviewgram/get_repo_settings/",
-                "dataType": "json",
-                "data": {
-                    "chatId" : reviewgram.requestPeerID(chatId),
-                    "uuid": uuid,
-                },
-                "method": "GET",
-                "on404" : on404
-            }, wrapInner);
-        }).bind(null, fun);
-        if (isNew) {
-            var text = btoa(uuid);
-            reviewgram.sendMessageToBot(text, wrapper);
-        } else {
-            wrapper();
-        }
-    });
-};
-
-// Установка настроек репозитория
-var setRepoSettings = function(chatId, fun, repoUserName, repoSameName, user, password, on404)  {
-    fetchOrCreateUUID(function(isNew, uuid, timestamp) {
-        var wrapper = (function(fun) {
-            makeRepeatedRequest({
-                "url": "/reviewgram/set_repo_settings/",
-                "dataType": "json",
-                "data": {
-                    "chatId" : reviewgram.requestPeerID(chatId),
-                    "uuid": uuid,
-                    "repoUserName": repoUserName,
-                    "repoSameName": repoSameName,
-                    "user": user,
-                    "password": btoa(password)
-                },
-                "method": "POST",
-                "on404": on404
-            }, fun);
-        }).bind(null, fun);
-        if (isNew) {
-            var text = btoa(uuid);
-            reviewgram.sendMessageToBot(text, wrapper);
-        } else {
-            wrapper();
-        }
-    });
-};
-
+var isEditRequestRunning = false;
 var widgetsToCallbacks = {};
 var repoSettings = {};
 var branchName = "";
@@ -202,4 +123,3 @@ function isMatchesAllowedExtensions(fileName) {
     }
     return false;
 }
-reviewgram.initReviewgramEvents();

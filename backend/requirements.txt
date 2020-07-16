@@ -3,5 +3,5 @@ pyflakes
 jedi
 python-dotenv
 PyMySQL
-PyCrypto
+pycryptodome
 google-cloud-speech

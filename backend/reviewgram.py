@@ -62,14 +62,14 @@ class AESCipher(object):
         raw_bytes = self._pad(raw)
         raw_size_bytes = struct.pack('<i', raw_size)
         iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return base64.b64encode(iv + raw_size_bytes + cipher.encrypt(raw_bytes))
+        cipher = AES.new(self.key.encode("utf8"), AES.MODE_CBC, iv)
+        return base64.b64encode(iv + raw_size_bytes + cipher.encrypt(raw_bytes.encode("utf8")))
 
     def decrypt(self, enc):
         enc = base64.b64decode(enc)
         iv = enc[:self.bs]
         raw_size = struct.unpack('<i', enc[self.bs:self.bs + 4])[0]
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        cipher = AES.new(self.key.encode("utf8"), AES.MODE_CBC, iv)
         raw_bytes = cipher.decrypt(enc[self.bs + 4:])
         raw = raw_bytes[:raw_size].decode('utf_8')
         return raw
@@ -474,15 +474,15 @@ def get_repo_settings():
     if (is_user_in_chat(uuid, chatId)):
         con = connect_to_db()
         with con:
-            row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
+            row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
             if (row is not None):
                 password = ""
                 if (len(row[4]) > 0):
                     c = AESCipher()
                     password = c.decrypt(row[4])
-                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8')})
+                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5] })
             else:
-                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": ""})
+                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1})
     else:
         abort(404)
 
@@ -495,6 +495,7 @@ def set_repo_settings():
     repoSameName = request.values.get("repoSameName")
     user = request.values.get("user")
     password = request.values.get("password")
+    langId = request.values.get("langId")
     if (is_user_in_chat(uuid, chatId)):
 
         if (repoUserName is None):
@@ -527,16 +528,27 @@ def set_repo_settings():
                     return jsonify({"error": "Не указан пароль"})
             except Exception as e:
                 return jsonify({"error": "Не указан пароль"})
+        
+        con = connect_to_db()
+        if (langId is None):
+            return jsonify({"error": "Не указан ID языка"})
+        else:
+            try:
+                langId = int(langId)
+                row = select_and_fetch_one(con, "SELECT * FROM `languages` WHERE `ID` = %s LIMIT 1", [langId])
+                if (row is None):
+                    return jsonify({"error": "Не найден язык"})
+            except Exception as e:
+                return jsonify({"error": "Не распарсен язык"})
 
         c = AESCipher()
         password = c.encrypt(password)
-        con = connect_to_db()
         with con:
             row = select_and_fetch_one(con, "SELECT * FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
             if (row is not None):
-                execute_update(con, "UPDATE `repository_settings` SET REPO_SITE = %s, REPO_USER_NAME = %s, REPO_SAME_NAME = %s, USER = %s, PASSWORD = %s WHERE CHAT_ID = %s", ['github.com', repoUserName, repoSameName, user, password, chatId])
+                execute_update(con, "UPDATE `repository_settings` SET REPO_SITE = %s, REPO_USER_NAME = %s, REPO_SAME_NAME = %s, USER = %s, PASSWORD = %s, LANG_ID = %s WHERE CHAT_ID = %s", ['github.com', repoUserName, repoSameName, user, password, langId, chatId])
             else:
-                execute_update(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD) VALUES (%s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password])
+                execute_update(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID) VALUES (%s, %s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password, langId])
             return jsonify({"error": ""})
     else:
         abort(404)
