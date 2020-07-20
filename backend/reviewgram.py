@@ -2,6 +2,7 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from flask import Flask, request, jsonify, abort
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
+from reviewgramdb import *
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -100,7 +101,7 @@ def try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, bran
         execute_update(con, "INSERT INTO `repository_cache_storage_table`(REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, BRANCH_ID, TSTAMP) VALUES (%s, %s, %s, %s, 0)", [repoSite, repoUserName, repoSameName, branchId])
 
 # Строит запрос для автодополнения из таблицы по полному совпадению
-def build_exact_match_autocomplete_query(amount, limit):
+def build_exact_match_autocomplete_query(amount, limit, langId):
 	if (amount == 0):
 		return ""
 	if (amount == 1):
@@ -112,7 +113,7 @@ def build_exact_match_autocomplete_query(amount, limit):
 				"	r1.LEXEME_ID = 0 AND r1.`TEXT` = %s " \
 				"AND r2.LEXEME_ID = 1 " \
 				"AND r1.ROW_ID = r2.ROW_ID " \
-				"LIMIT " + str(limit)
+				"AND r1.`LANG_ID` = " + str(langId) + " LIMIT " + str(limit)
 	result = "SELECT DISTINCT(r" + str(amount + 1) +".TEXT) "
 	result += " FROM "
 	i = 1
@@ -131,11 +132,12 @@ def build_exact_match_autocomplete_query(amount, limit):
 	while (i < amount):
 		result += "    AND r1.ROW_ID = r" + str(i + 2) + ".ROW_ID "
 		i = i + 1
+	result += " AND r1.`LANG_ID` = " + str(langId)
 	result += " LIMIT " + str(limit)
 	return result
 
 # Строит запрос для автодополнения  из таблицы по неполному совпадению
-def build_non_exact_match_autocomplete_query(amount, limit):
+def build_non_exact_match_autocomplete_query(amount, limit, langId):
 	if (amount == 0):
 		return ""
 	if (amount == 1):
@@ -144,7 +146,7 @@ def build_non_exact_match_autocomplete_query(amount, limit):
 			   "  `repository_autocompletion_lexemes` AS r1 " \
 			   "WHERE " \
 			   "r1.`LEXEME_ID` = 0 AND levenshtein(r1.`TEXT`, %s) <= CHAR_LENGTH(r1.`TEXT`) / 2  " \
-			   "LIMIT " + str(limit)
+			   "AND r1.`LANG_ID` = " + str(langId) + " LIMIT " + str(limit)
 	result = "SELECT DISTINCT(r" + str(amount) +".TEXT) "
 	result += " FROM "
 	i = 1
@@ -163,15 +165,16 @@ def build_non_exact_match_autocomplete_query(amount, limit):
 	while (i <= amount):
 		result += "AND r1.ROW_ID = r"  + str(i) + ".ROW_ID "
 		i = i + 1
+	result += " AND r1.`LANG_ID` = " + str(langId)
 	result += " LIMIT " + str(limit)
 	return result
 
 # Пытается сделать автодополнение через таблицу
-def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
+def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount, langId):
     if (len(lexemes) == 0):
         return []
     exactLimit = math.ceil(maxAmount / 2)
-    exactQuery = build_exact_match_autocomplete_query(len(lexemes), exactLimit)
+    exactQuery = build_exact_match_autocomplete_query(len(lexemes), exactLimit, langId)
     exactRows = []
     try:
         with Timeout(seconds = 3):
@@ -196,7 +199,7 @@ def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
             'name_with_symbols': row[0]
         })
     nonExactLimit = maxAmount - len(result)
-    nonExactQuery = build_non_exact_match_autocomplete_query(len(lexemes), nonExactLimit)
+    nonExactQuery = build_non_exact_match_autocomplete_query(len(lexemes), nonExactLimit, langId)
     nonExactRows = []
     try:
         with Timeout(seconds = 3):
@@ -224,11 +227,11 @@ def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
 
 
 # Пытается сделать автодополнение через таблицу
-def table_try_autocomplete(con, lexemes):
+def table_try_autocomplete(con, lexemes, langId):
     if (len(lexemes) == 0):
         return []
     maxAmount = int(os.getenv("AUTOCOMPLETE_MAX_AMOUNT"))
-    return table_try_autocomplete_with_max_amount(con, lexemes, maxAmount)
+    return table_try_autocomplete_with_max_amount(con, lexemes, maxAmount, langId)
 
 #  Делает автодополнение через jedi, используя даннные папки и содержимое
 def jedi_try_autocomplete_with_folder(content, line, position, folderName):
@@ -278,41 +281,6 @@ def safe_get_key(dict, keys):
         else:
             return None
     return tmp
-
-# Соединение с БД
-def connect_to_db():
-    return pymysql.connect(os.getenv("MYSQL_HOST"), os.getenv("MYSQL_USER"), os.getenv("MYSQL_PASSWORD"), os.getenv("MYSQL_DB"))
-
-# Получение первой строки по запросу из БД
-def select_and_fetch_all(con, query, params):
-    cur = con.cursor()
-    cur.execute(query, params)
-    result = cur.fetchall()
-    cur.close()
-    return result
-
-# Получение первой строки по запросу из БД
-def select_and_fetch_one(con, query, params):
-    cur = con.cursor()
-    cur.execute(query, params)
-    result = cur.fetchone()
-    cur.close()
-    return result
-
-# Получение первой колонки и строки по запросу из БД
-def select_and_fetch_first_column(con, query, params):
-    row  = select_and_fetch_one(con, query, params)
-    if (row is None):
-        return None
-    else:
-        return row[0]
-
-# Выполнение запроса к БД
-def execute_update(con, query, params):
-    cur = con.cursor()
-    cur.execute(query, params)
-    con.commit()
-    cur.close()
 
 # Запись данных в лог
 def append_to_log(text):
@@ -581,7 +549,8 @@ def check_syntax():
         content = safe_get_key(data, ["content"])
         start = safe_get_key(data, ["start"])
         end = safe_get_key(data, ["end"])
-        if ((fileName is not None) and (content is not None) and (start is not None) and (end is not None)):
+        langId = safe_get_key(data, ["langId"])
+        if ((fileName is not None) and (content is not None) and (start is not None) and (end is not None) and (langId is not None)):
             fileContent = base64.b64decode(content)
             errors = run_pyflakes(fileName, fileContent.decode('UTF-8'), start, end)
             errors = base64.b64encode(errors.encode('UTF-8')).decode('UTF-8')
@@ -602,9 +571,11 @@ def get_autocompletions():
         position = int(safe_get_key(data, ["position"]))
         chatId = int(safe_get_key(data, ["chatId"]))
         branchId = safe_get_key(data, ["branchId"])
-        if ((tokens is not None) and (content is not None) and (line is not None) and (position is not None) and (chatId is not None) and (branchId is not None)):
+        langId = safe_get_key(data, ["langId"])
+        if ((tokens is not None) and (content is not None) and (line is not None) and (position is not None) and (chatId is not None) and (branchId is not None) and (langId is not None)):
             if (not isinstance(tokens, list)):
                 raise Exception("Error!")
+            langId = int(langId)
             fileContent = base64.b64decode(content)
             con1 = connect_to_db()
             con2 = connect_to_db()
@@ -618,7 +589,7 @@ def get_autocompletions():
             try:
                 with con2:
                     if (len(result) == 0):
-                        result = result + table_try_autocomplete(con2, tokens)
+                        result = result + table_try_autocomplete(con2, tokens, langId)
             except Exception as e:
                 append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
             append_to_log("/reviewgram/get_autocompletions: Proceeding to result")
