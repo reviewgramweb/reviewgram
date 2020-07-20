@@ -1,6 +1,6 @@
 from language import Language
 from pythonautocompleter import PythonAutocompleter
-from syntaxchecker import PythonSyntaxChecker
+from pythonsyntaxchecker import PythonSyntaxChecker
  
 # Абстрактный класс языка для работы с ними
 class PythonLanguage(Language): 
@@ -16,7 +16,6 @@ class PythonLanguage(Language):
     # end   (int) - конец проверяемого участка
     # Возвращает
     # list со списком ошибок
-    @abstractmethod
     def checkSyntax(self, fileName, fileContent, start, end):
         return self.syntaxChecker.checkSyntax(fileName, fileContent, start, end)
 
@@ -28,6 +27,5 @@ class PythonLanguage(Language):
     # position (int) - позиция в строке
     # chatId (str) - ID чата
     # branchId (str) -  ID ветки
-    @abstractmethod
     def getAutocompletions(self, con, tokens, content, line, position, chatId, branchId):
         return self.autocompleter.getAutocompletions(con, tokens, content, line, position, chatId, branchId)

@@ -13,7 +13,8 @@ import subprocess
 
 path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(path + "/../")
-from reviewgram import AESCipher, repo_folder_name
+from reviewgram import AESCipher
+from repoutils import repo_folder_name
 
 env_path = Path(path + "/../") / '.env'
 load_dotenv(dotenv_path=env_path)

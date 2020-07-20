@@ -7,7 +7,7 @@ class LanguageFactory:
         self.idsToLangs = {1 : PythonLanguage()}
         
     def create(self, langId):
-        if (langId in self.idsToLangs)
+        if (langId in self.idsToLangs):
             return self.idsToLangs[langId]
-        else
+        else:
             raise Exception("No such language")

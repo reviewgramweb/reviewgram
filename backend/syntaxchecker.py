@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-
 # Абстрактный класс для проверки синтаксиса
 class SyntaxChecker(ABC): 
     def __init__(self):

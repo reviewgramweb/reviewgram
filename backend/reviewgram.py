@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify, abort
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 from reviewgramdb import *
+from repoutils import *
+from languagefactory import LanguageFactory
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -17,8 +19,6 @@ import base64
 import traceback
 import requests
 import time
-import tempfile
-import subprocess
 import math
 import re
 import jedi
@@ -74,31 +74,6 @@ class AESCipher(object):
         raw_bytes = cipher.decrypt(enc[self.bs + 4:])
         raw = raw_bytes[:raw_size].decode('utf_8')
         return raw
-
-# Формирует имя папки репозитория
-def repo_folder_name(repoUserName, repoName, branchId):
-    return repoUserName + "_" + repoName + "_" + re.sub(r"[^0-9a-zA-Z_]", "__", branchId)
-
-
-# существует ли папка репозитория
-def is_repo_folder_exists(repoUserName, repoName, branchId):
-    folderName = repo_folder_name(repoUserName, repoName, branchId)
-    path = os.path.dirname(os.path.abspath(__file__))
-    fullPath = path + "/repos/" + folderName + "/.git/"
-    return os.path.isdir(fullPath)
-
-# полная папка репозитория
-def full_repo_folder_name(repoUserName, repoName, branchId):
-    folderName = repo_folder_name(repoUserName, repoName, branchId)
-    path = os.path.dirname(os.path.abspath(__file__))
-    fullPath = path + "/repos/" + folderName + "/"
-    return fullPath
-
-# Пытается вставить задачу на клонирование репозитория
-def try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, branchId):
-    result = select_and_fetch_one(con, "SELECT * FROM `repository_cache_storage_table` WHERE `REPO_SITE` = %s AND `REPO_USER_NAME` = %s  AND `REPO_SAME_NAME` = %s  AND `BRANCH_ID` = %s LIMIT 1" , [repoSite, repoUserName, repoSameName, branchId])
-    if (result is None):
-        execute_update(con, "INSERT INTO `repository_cache_storage_table`(REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, BRANCH_ID, TSTAMP) VALUES (%s, %s, %s, %s, 0)", [repoSite, repoUserName, repoSameName, branchId])
 
 # Строит запрос для автодополнения из таблицы по полному совпадению
 def build_exact_match_autocomplete_query(amount, limit, langId):
@@ -233,45 +208,6 @@ def table_try_autocomplete(con, lexemes, langId):
     maxAmount = int(os.getenv("AUTOCOMPLETE_MAX_AMOUNT"))
     return table_try_autocomplete_with_max_amount(con, lexemes, maxAmount, langId)
 
-#  Делает автодополнение через jedi, используя даннные папки и содержимое
-def jedi_try_autocomplete_with_folder(content, line, position, folderName):
-    result = []
-    try:
-        script = jedi.Script(content, line, position, folderName)
-        completions = script.completions()
-    except jedi.NotFoundError:
-        completions = []
-    for completion in completions:
-        result.append({
-            'append_type': 'no_space',
-            'complete': completion.complete,
-            'name_with_symbols': completion.name_with_symbols
-        })
-    return result
-
-# Пытается сделать автодополнение через jedi,  добавляя репозиторий на клонирование в процессе
-def jedi_try_autocomplete(con, chatId, branchId, content, line, position):
-    try:
-        result = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME FROM `repository_settings` WHERE `CHAT_ID` = " + str(chatId) + " LIMIT 1"  ,[])
-        if (result is not None):
-            repoSite = result[0]
-            repoUserName = result[1]
-            repoSameName = result[2]
-            result = []
-            if (is_repo_folder_exists(repoUserName, repoSameName, branchId)):
-                folderName = full_repo_folder_name(repoUserName, repoSameName, branchId)
-                result = jedi_try_autocomplete_with_folder(content, line, position, folderName)
-            else:
-                try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, branchId)
-                result =  jedi_try_autocomplete_with_folder(content, line, position, ".")
-            return result
-        else:
-            return []
-    except Exception as e:
-        print(traceback.format_exc())
-        append_to_log("/reviewgram/jedi_try_autocomplete: Exception " + traceback.format_exc())
-        return []
-
 # Получение вложенных данных из словаря
 def safe_get_key(dict, keys):
     tmp = dict
@@ -351,38 +287,6 @@ def is_user_in_chat(uuid, chatId):
     except Exception as e:
         append_to_log("/reviewgram/register_chat_id_for_token/: Exception " + traceback.format_exc())
         return False
-
-
-# Группирует ошибки из pyflakes в кортежи (строка, список ошибок)
-def build_error_line_groups(fileName, errorContent):
-    errorContentLines = errorContent.split("\n")
-    errorsByLines = []
-    for line in errorContentLines:
-        if (line.startswith(fileName)):
-            lineWithoutName = line[(len(fileName)+1):]
-            secondColonPos = lineWithoutName.index(":")
-            numberAsString = lineWithoutName[:secondColonPos]
-            lineNo = int(numberAsString)
-            tuple = (lineNo, [line])
-            errorsByLines.append(tuple)
-        else:
-            if (len(errorsByLines) != 0):
-                errorsByLines[len(errorsByLines) - 1][1].append(line)
-    return errorsByLines
-
-# Запускает PyFlakes
-def run_pyflakes(name, content, start, end):
-    with tempfile.NamedTemporaryFile() as temp:
-        temp.write(content.encode("UTF-8"))
-        temp.flush()
-        fileName = temp.name
-        result = subprocess.run(['pyflakes', fileName], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        errorContent = result.stderr.decode("UTF-8")
-        errors = build_error_line_groups(fileName, errorContent)
-        ownErrors = [error for error in errors if ((error[0] >= start) and (error[0] <= end))]
-        ownErrors = list(map(lambda x:"\n".join(x[1]), ownErrors))
-        ownErrors = "\n".join(ownErrors).replace(fileName, name)
-        return ownErrors
 
 @app.route('/')
 def index():
@@ -552,7 +456,8 @@ def check_syntax():
         langId = safe_get_key(data, ["langId"])
         if ((fileName is not None) and (content is not None) and (start is not None) and (end is not None) and (langId is not None)):
             fileContent = base64.b64decode(content)
-            errors = run_pyflakes(fileName, fileContent.decode('UTF-8'), start, end)
+            langId = int(langId)
+            errors = LanguageFactory().create(langId).checkSyntax(fileName, fileContent.decode('UTF-8'), start, end)
             errors = base64.b64encode(errors.encode('UTF-8')).decode('UTF-8')
             return jsonify({"errors": errors})
     except Exception as e:
@@ -582,7 +487,7 @@ def get_autocompletions():
             result = []
             try:
                 with con1:
-                    result = result + jedi_try_autocomplete(con1, chatId, branchId, fileContent, line, position)
+                    result = result +  LanguageFactory().create(langId).getAutocompletions(con1, tokens, fileContent, line, position, chatId, branchId,)
             except Exception as e:
                 append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
             append_to_log("/reviewgram/get_autocompletions: Proceeding to table")
