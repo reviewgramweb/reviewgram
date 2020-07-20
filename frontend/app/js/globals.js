@@ -44,42 +44,6 @@ var makeRepeatedRequest = function(options, success)  {
     $.ajax(ownOptions);
 };
 
-var isEditRequestRunning = false;
-var widgetsToCallbacks = {};
-var repoSettings = {};
-var branchName = "";
-var lastCommit = "";
-var editedFileName = "";
-var editedFileUrl = "";
-var editedFileSha = "";
-var editedFileContent = "";
-var rangeStart = 0;
-var rangeEnd = 0;
-var aceEditorForRangeSelect = null;
-var aceEditorMain = null;
-var allowedFileExtensions = [".txt", ".py"];
-var editorCursorPosition = null;
-var editorAutocompleteSendTimeoutHandle = null;
-var editorEditedPart = "";
-var namesToModes = {".py": "ace/mode/python"};
-var lineSeparator = "";
-var resultFileContent = "";
-var editedSoundFileBlob = null;
-var globalRecorder = null;
-var currentRecorderId = 0;
-
-function fileNameToAceMode(fileName) {
-    var name = fileName.toLowerCase();
-    for (var  key in namesToModes) {
-        if (namesToModes.hasOwnProperty(key)) {
-            if (name.endsWith(key)) {
-                return namesToModes[key];
-            }
-        }
-    }
-    return "ace/mode/plain_text";
-};
-
 function uint8ArrayToBase64( bytes ) {
     var len = bytes.byteLength;
     for (var i = 0; i < len; i++) {
@@ -112,14 +76,4 @@ function b64EncodeUnicode(str) {
         function toSolidBytes(match, p1) {
             return String.fromCharCode('0x' + p1);
     }));
-}
-
-function isMatchesAllowedExtensions(fileName) {
-    var name = fileName.toLowerCase();
-    for (var  i = 0 ; i < allowedFileExtensions.length; i++) {
-        if (name.endsWith(allowedFileExtensions[i])) {
-            return true;
-        }
-    }
-    return false;
 }

@@ -12,7 +12,9 @@ function EditedFile() {
     this.url = "";
     this.sha = "";
     this.content = "";
+    this.langId = "";
     this.lineSeparator = "";
+    this.editedPart = "";
 };
 
 // API webogram
@@ -121,14 +123,28 @@ function Reviewgram() {
     this._currentDialog = "";
     // @var {String} имя ветки
     this._branchName = "";
+    // @var {String} хеш последнего коммита
+    this._lastCommit = "";
+    // @var {String[]} поддерживаемые расширения для файлов
+    this._allowedFileExtensions = [".txt", ".py"];
     // @var {Number} время жизни токена авторизациии Reviewgram в минутах
     this._tokenLiveCountMinutes = 150;
     // @var {Number} число секунд в минуте
     this._secondsInMinute = 60;
+    // @var {Object} настройки репозитория
+    this._repoSettings = null;
     // @var {Object} названия языков к имени
     this.langIdsToNames = {
         1 : "Python"
     };
+    // @var {Object} соотношения раширений к режимам AceEditor
+    this._extsToModes = {".py": "ace/mode/python"};
+    // @var {Object} соотношения раширений c ID языков
+    this._extsToLangIds = {".py": 1};
+    // @var {Boolean} запущен ли запрос на редактирование
+    this._isEditRequestRunning = false;
+    // @var {Number} хендл на автодополнение
+    this._autocompleteSendTimeoutHandle = null;
 
     this.__selectAceGutterRange = function(parent, start, end) {
         var list = $(parent + " .ace_gutter-cell");
@@ -165,6 +181,46 @@ function Reviewgram() {
                 fun(false, uuid, timestamp);
             }
         }
+    };
+    // Возвращает истину если файл подходит под разрешённые расширения
+    // @var {String} имя файла
+    // @return Boolean полходит или нет
+    this.__isMatchesAllowedExtensions = function(fileName) {
+        var name = fileName.toLowerCase();
+        for (var  i = 0 ; i < this._allowedFileExtensions.length; i++) {
+            if (name.endsWith(this._allowedFileExtensions[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+    // Преобарзует имя файла в режим ACE Editor
+    // @var {String} fileName имя файла
+    // @return {String} имя файла
+    this.__fileNameToAceMode = function(fileName) {
+        var name = fileName.toLowerCase();
+        for (var key in this._extsToModes) {
+            if (this._extsToModes.hasOwnProperty(key)) {
+                if (name.endsWith(key)) {
+                    return this._extsToModes[key];
+                }
+            }
+        }
+        return "ace/mode/plain_text";
+    };
+    // Преобарзует имя файла в режим ACE Editor
+    // @var {String} fileName имя файла
+    // @return {String} имя файла
+    this.__fileNameToLangId = function(fileName) {
+        var name = fileName.toLowerCase();
+        for (var key in this._extsToLangIds ) {
+            if (this._extsToLangIds.hasOwnProperty(key)) {
+                if (name.endsWith(key)) {
+                    return this._extsToLangIds[key];
+                }
+            }
+        }
+        return "ace/mode/plain_text";
     };
     // Получение настроек репозитория
     // @var {String} ID чата
@@ -273,7 +329,7 @@ function Reviewgram() {
                     recordingslist.appendChild(li);
                     */
                 };
-            } catch(exc) {
+            } catch (exc) {
                   // Если голосовой ввод не поддерживается браузером - выключаем его.
                   e.remove();
             }
@@ -312,6 +368,7 @@ function Reviewgram() {
                   me._recorder.start().catch(function(exc){
                       window.alert( exc.message );
                       parent.remove();
+                      $(".btn-next-tab").removeAttr("disabled");
                   });
                   $(".btn-next-tab").attr("disabled", "disabled");
                   // TODO: callback here
@@ -433,7 +490,7 @@ function Reviewgram() {
     this._getResultFileContent = function() {
         var strings = this._editedFile.content.split(this._editedFile.lineSeparator);
         var begin = strings.slice(0, this._editorRange.start - 1);
-        var rangeEnd = this._editorRange.start.end;
+        var rangeEnd = this._editorRange.end;
         if (rangeEnd == null) {
             rangeEnd = this._editorRange.start;
         }
@@ -521,8 +578,9 @@ function Reviewgram() {
         var column = this._mainEditorCursorPosition.column;
         var line = this._mainEditorCursorPosition.row + this._editorRange.start;
         var position = this._mainEditorCursorPosition.column;
-        var content = b64EncodeUnicode(this.getResultFileContent());
+        var content = b64EncodeUnicode(this._getResultFileContent());
         var tokens = null;
+        var me = this;
         try {
             tokens = this._getPreviousTokens(langId, this._mainEditorCursorPosition);
         } catch (e) {
@@ -543,7 +601,7 @@ function Reviewgram() {
                 "langId": langId
             }),
             "success": function(o) {
-                if ((row == this._mainEditorCursorPosition.row) && (column == this._mainEditorCursorPosition.column)) {
+                if ((row == me._mainEditorCursorPosition.row) && (column == me._mainEditorCursorPosition.column)) {
                     $(".autocompletion .body").html("");
                     for (var i = 0; i < o.length; i++) {
                         $("<button />", {
@@ -700,13 +758,14 @@ function Reviewgram() {
     };
     // Контроллер для окна проведения изменений
     this.makeCommitController = function($rootScope, $scope, $modal, AppUsersManager, AppPeersManager, MtpApiManager, $modalInstance) {
+        var me = this;
         $scope.fetchBranchesList = function() {
             $.ajax({
                 "method": "GET",
                 "dataType": "json",
-                "username": repoSettings.user,
-                "password": repoSettings.password,
-                "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+                "username": me._repoSettings.user,
+                "password": me._repoSettings.password,
+                "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/branches",
                 "success": function(o) {
                     console.log(o);
                     var result = "";
@@ -757,101 +816,101 @@ function Reviewgram() {
                   }
             }
             if (selectedElement != null) {
-                branchName = selectedElement.attr("data-name").replace(/&quot;/, "\"");
-                lastCommit = selectedElement.attr("data-commit");
+                me._branchName = selectedElement.attr("data-name").replace(/&quot;/, "\"");
+                me._lastCommit = selectedElement.attr("data-commit");
                 $("#rcommit_preloader").css('display', 'block');
                 $("#rcommit_branch_select").css('display', 'none');
                 $.ajax({
-               	"method": "GET",
-               	"dataType": "json",
-               	"username": repoSettings.user,
-               	"password": repoSettings.password,
-               	"url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/commits/" + lastCommit,
-               	"success": function(o) {
-               		console.log(o);
-               		var error = true;
-                      if ('commit' in o) {
-                          if ('tree' in o['commit']) {
-                              error = false;
-                              $scope.fetchFileList(o['commit']['tree']['url'] + "?recursive=y");
-                          }
-                      }
-                      if (error) {
-                          $("#rcommit_preloader").css('display', 'none');
-                   		$("#rcommit_error").css('display', 'block');
-                   		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из ветки репозитория GitHub. Пожалуйста, проверьте настройки репозитория и попробуйте ещё раз");
-                          $("#rcommit_error").find(".buttons").css("display", "none");
-                   		$(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                          $(window).trigger('resize');
-                      }
-               	},
-               	"error": function() {
-               		$("#rcommit_preloader").css('display', 'none');
-               		$("#rcommit_error").css('display', 'block');
-               		$("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Попробуйте ещё раз");
-                      $("#rcommit_error").find(".buttons").css("display", "block");
-                      $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                      $(".btn-repeat").attr("data-invoke", 'submitBranchName').removeAttr('data-arg');
-                      $(window).trigger('resize');
-               	}
-               });
+                   	"method": "GET",
+                   	"dataType": "json",
+                   	"username":  me._repoSettings.user,
+                   	"password":  me._repoSettings.password,
+                   	"url": "/github_api/repos/" +  me._repoSettings.repo_user_name  + "/" +  me._repoSettings.repo_same_name + "/commits/" + me._lastCommit,
+                   	"success": function(o) {
+                   		console.log(o);
+                   		var error = true;
+                        if ('commit' in o) {
+                            if ('tree' in o['commit']) {
+                                error = false;
+                                $scope.fetchFileList(o['commit']['tree']['url'] + "?recursive=y");
+                            }
+                        }
+                        if (error) {
+                            $("#rcommit_preloader").css('display', 'none');
+                            $("#rcommit_error").css('display', 'block');
+                            $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из ветки репозитория GitHub. Пожалуйста, проверьте настройки репозитория и попробуйте ещё раз");
+                            $("#rcommit_error").find(".buttons").css("display", "none");
+                            $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                            $(window).trigger('resize');
+                        }
+                   	},
+                   	"error": function() {
+                        $("#rcommit_preloader").css('display', 'none');
+                        $("#rcommit_error").css('display', 'block');
+                        $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Попробуйте ещё раз");
+                        $("#rcommit_error").find(".buttons").css("display", "block");
+                        $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                        $(".btn-repeat").attr("data-invoke", 'submitBranchName').removeAttr('data-arg');
+                        $(window).trigger('resize');
+                   	}
+                   });
             }
         };
         $scope.fetchFileList = function(url) {
             $.ajax({
-              "method": "GET",
-              "dataType": "json",
-              "username": repoSettings.user,
-              "password": repoSettings.password,
-              "url": url,
-              "success": function(o) {
-                  console.log(o);
-                  var error = true;
-                  if ('tree' in o) {
-                      error = false;
-                      $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите файл для редактирования");
-                      var result = "";
-                      var cnt =  0;
-                      for (var  i = 0; i < o["tree"].length; i++) {
-                          var fileData = o["tree"][i];
-                          var path = fileData["path"];
-                          var url = fileData["url"];
-                          var sha =  fileData["sha"];
-                          if (isMatchesAllowedExtensions(path) && (fileData["type"] != "tree")) {
-                              var escapedName = path.replace(/\"/g, "&quot;");
-                              var text = escapeHtml(path);
-                              result = result + "<li data-sha=\"" + sha + "\" data-url=\"" + url + "\" data-name=\""  + escapedName + "\">" + text +  "</li>";
-                              ++cnt;
-                          }
-                      }
-                      $("#rcommit_file_select #commitFile ul").html(result);
-                      if (cnt == 1) {
-                          $("#rcommit_file_select #commitFile ul li:first").addClass('selected');
-                          $scope.submitFileName();
-                          return;
-                      }
-                      $("#rcommit_preloader").css('display', 'none');
-                      $("#rcommit_file_select").css('display', 'block');
-                      $(window).trigger('resize');
-                  }
-                  if (error) {
-                      $("#rcommit_preloader").css('display', 'none');
-                      $("#rcommit_error").css('display', 'block');
-                      $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Возможно, ветка изменилась или была удалена. Попробуйте ещё раз.");
-                      $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                      $("#rcommit_error").find(".buttons").css("display", "none");
-                      $(window).trigger('resize');
-                  }
-              },
-              "error": function() {
-                  $("#rcommit_preloader").css('display', 'none');
-                  $("#rcommit_error").css('display', 'block');
-                  $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
-                  $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                  $("#rcommit_error").find(".buttons").css("display", "block");
-                  $(".btn-repeat").attr("data-invoke", 'fetchFileList').attr('data-arg', url);
-                  $(window).trigger('resize');
-              }
+                "method": "GET",
+                "dataType": "json",
+                "username":  me._repoSettings.user,
+                "password":  me._repoSettings.password,
+                "url": url,
+                "success": function(o) {
+                     console.log(o);
+                     var error = true;
+                     if ('tree' in o) {
+                         error = false;
+                         $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите файл для редактирования");
+                         var result = "";
+                         var cnt =  0;
+                         for (var  i = 0; i < o["tree"].length; i++) {
+                             var fileData = o["tree"][i];
+                             var path = fileData["path"];
+                             var url = fileData["url"];
+                             var sha =  fileData["sha"];
+                             if (me.__isMatchesAllowedExtensions(path) && (fileData["type"] != "tree")) {
+                                 var escapedName = path.replace(/\"/g, "&quot;");
+                                 var text = escapeHtml(path);
+                                 result = result + "<li data-sha=\"" + sha + "\" data-url=\"" + url + "\" data-name=\""  + escapedName + "\">" + text +  "</li>";
+                                 ++cnt;
+                             }
+                         }
+                         $("#rcommit_file_select #commitFile ul").html(result);
+                         if (cnt == 1) {
+                             $("#rcommit_file_select #commitFile ul li:first").addClass('selected');
+                             $scope.submitFileName();
+                             return;
+                         }
+                         $("#rcommit_preloader").css('display', 'none');
+                         $("#rcommit_file_select").css('display', 'block');
+                         $(window).trigger('resize');
+                     }
+                     if (error) {
+                         $("#rcommit_preloader").css('display', 'none');
+                         $("#rcommit_error").css('display', 'block');
+                         $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов. Возможно, ветка изменилась или была удалена. Попробуйте ещё раз.");
+                         $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                         $("#rcommit_error").find(".buttons").css("display", "none");
+                         $(window).trigger('resize');
+                     }
+                },
+                "error": function() {
+                     $("#rcommit_preloader").css('display', 'none');
+                     $("#rcommit_error").css('display', 'block');
+                     $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
+                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                     $("#rcommit_error").find(".buttons").css("display", "block");
+                     $(".btn-repeat").attr("data-invoke", 'fetchFileList').attr('data-arg', url);
+                     $(window).trigger('resize');
+                }
             });
         };
         $scope.submitFileName = function() {
@@ -873,104 +932,107 @@ function Reviewgram() {
                   }
             }
             if (selectedElement != null) {
-                editedFileName = selectedElement.attr("data-name").replace(/&quot;/, "\"");
-                editedFileUrl = selectedElement.attr("data-url");
-                editedFileSha = selectedElement.attr("data-sha");
+                me._editedFile.name = selectedElement.attr("data-name").replace(/&quot;/, "\"");
+                me._editedFile.url = selectedElement.attr("data-url");
+                me._editedFile.sha = selectedElement.attr("data-sha");
+                me._editedFile.langId = me.__fileNameToLangId(me._editedFile.name);
                 $("#rcommit_preloader").css('display', 'block');
                 $("#rcommit_branch_select").css('display', 'none');
                 $("#rcommit_file_select").css('display', 'none');
                 $.ajax({
-                  "method": "GET",
-                  "dataType": "json",
-                  "username": repoSettings.user,
-                  "password": repoSettings.password,
-                  "url": editedFileUrl,
-                  "success": function(o) {
-                      var error = true;
-                      if (('content' in o) && ('encoding' in o)) {
-                          error = false;
-                          $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите промежуток для редактирования");
-                          if (o['encoding'] == 'base64') {
-                              editedFileContent = b64DecodeUnicode(o['content']);
-                          } else {
-                              editedFileContent = o['content']
-                          }
-                          $("#rcommit_preloader").css('display', 'none');
-                          $("#rcommit_range_select").css('display', 'block');
-                          $("#rcommit_range_select .editor-wrapper").html("");
-                          $("#rcommit_range_select .editor-wrapper").html("<div id=\"editor_range_select\"></div>");
-                          $("#rcommit_range_select .editor-wrapper #editor_range_select").html(escapeHtml(editedFileContent));
-                          aceEditorForRangeSelect = ace.edit("editor_range_select");
-                          aceEditorForRangeSelect.setTheme("ace/theme/solarized_dark");
-                          aceEditorForRangeSelect.session.setMode(fileNameToAceMode(editedFileName));
-                          aceEditorForRangeSelect.setReadOnly(true);
-                          aceEditorForRangeSelect.setValue(editedFileContent);
-                          editorRangeSelectStart = null;
-                          editorRangeSelectEnd = null;
-                          editorRangeSelectLastClick = null;
-                          $(window).trigger('resize');
-                      }
-                      if (error) {
-                          $("#rcommit_preloader").css('display', 'none');
-                          $("#rcommit_error").css('display', 'block');
-                          $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла. Возможно, файл изменился или был удалён. Попробуйте ещё раз.");
-                          $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                          $("#rcommit_error").find(".buttons").css("display", "none");
-                          $(window).trigger('resize');
-                      }
-                  },
-                  "error": function() {
-                      $("#rcommit_preloader").css('display', 'none');
-                      $("#rcommit_error").css('display', 'block');
-                      $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
-                      $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-                      $("#rcommit_error").find(".buttons").css("display", "block");
-                      $(".btn-repeat").attr("data-invoke", 'submitFileName').removeAttr('data-arg');
-                      $(window).trigger('resize');
-                  }
+                    "method": "GET",
+                    "dataType": "json",
+                    "username": me._repoSettings.user,
+                    "password": me._repoSettings.password,
+                    "url": me._editedFile.url,
+                    "success": function(o) {
+                        var error = true;
+                        if (('content' in o) && ('encoding' in o)) {
+                            error = false;
+                            $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите промежуток для редактирования");
+                            if (o['encoding'] == 'base64') {
+                                me._editedFile.content = b64DecodeUnicode(o['content']);
+                            } else {
+                                me._editedFile.content = o['content']
+                            }
+                            $("#rcommit_preloader").css('display', 'none');
+                            $("#rcommit_range_select").css('display', 'block');
+                            $("#rcommit_range_select .editor-wrapper").html("");
+                            $("#rcommit_range_select .editor-wrapper").html("<div id=\"editor_range_select\"></div>");
+                            $("#rcommit_range_select .editor-wrapper #editor_range_select").html(escapeHtml(me._editedFile.content));
+                            me._rangeSelectEditor = ace.edit("editor_range_select");
+                            me._rangeSelectEditor.setTheme("ace/theme/solarized_dark");
+                            me._rangeSelectEditor.session.setMode(me.__fileNameToAceMode(me._editedFile.name));
+                            me._rangeSelectEditor.setReadOnly(true);
+                            me._rangeSelectEditor.setValue(me._editedFile.content);
+                            me._editorRange.start = null;
+                            me._editorRange.end = null;
+                            me._editorRange.lastClick = null;
+                            $(window).trigger('resize');
+                        }
+                        if (error) {
+                            $("#rcommit_preloader").css('display', 'none');
+                            $("#rcommit_error").css('display', 'block');
+                            $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла. Возможно, файл изменился или был удалён. Попробуйте ещё раз.");
+                            $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                            $("#rcommit_error").find(".buttons").css("display", "none");
+                            $(window).trigger('resize');
+                        }
+                    },
+                    "error": function() {
+                        $("#rcommit_preloader").css('display', 'none');
+                        $("#rcommit_error").css('display', 'block');
+                        $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
+                        $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
+                        $("#rcommit_error").find(".buttons").css("display", "block");
+                        $(".btn-repeat").attr("data-invoke", 'submitFileName').removeAttr('data-arg');
+                        $(window).trigger('resize');
+                    }
                 });
             }
         };
         $scope.submitRange = function() {
-             if (editorRangeSelectStart != null) {
-                 var rangeEnd = editorRangeSelectEnd;
+             if (me._editorRange.start != null) {
+                 var rangeEnd = me._editorRange.end;
                  if (rangeEnd === null) {
-                     rangeEnd =  editorRangeSelectStart;
+                     rangeEnd =  me._editorRange.start;
                  }
                  var separator = null;
-                 if (editedFileContent.indexOf("\r\n") != -1) {
+                 if (me._editedFile.content.indexOf("\r\n") != -1) {
                      separator = "\r\n";
                  } else {
-                     if (editedFileContent.indexOf("\r") != -1) {
+                     if (me._editedFile.content.indexOf("\r") != -1) {
                          separator = "\r";
                      } else {
                          separator = "\n";
                      }
                  }
-                 lineSeparator = separator;
-                 var strings = editedFileContent.split(separator).slice(editorRangeSelectStart - 1, rangeEnd).join("\n");
-                 editorEditedPart = strings;
+                 me._editedFile.lineSeparator = separator;
+                 var strings = me._editedFile.content.split(separator).slice(me._editorRange.start - 1, rangeEnd).join("\n");
+                 me._editedFile.editedPart = strings;
                  $("#rcommit_range_select").css('display', 'none');
                  $("#rcommit_edit").css('display', 'block');
                  $("#rcommit_edit #edit-syntax-error").html("");
                  $("#rcommit_edit .editor-wrapper").html("");
-                  isEditRequestRunning = false;
+                 me._isEditRequestRunning = false;
                  $("#rcommit_edit .editor-wrapper").html("<div id=\"editor_edit\"></div>");
-                 $("#rcommit_edit .editor-wrapper #editor_edit").html(escapeHtml(editorEditedPart));
+                 $("#rcommit_edit .editor-wrapper #editor_edit").html(escapeHtml(me._editedFile.editedPart));
                  $(".md_modal_title, .navbar-quick-media-back h4").html("");
-                 aceEditorMain = ace.edit("editor_edit");
-                 aceEditorMain.setOption("firstLineNumber", editorRangeSelectStart);
-                 aceEditorMain.setOption("tabSize", 4)
-                 aceEditorMain.setTheme("ace/theme/solarized_dark");
-                 aceEditorMain.session.setMode(fileNameToAceMode(editedFileName));
-                 aceEditorMain.setValue(editorEditedPart);
-                 aceEditorMain.session.selection.on('changeCursor', function(o) {
-                     var cursorPosition = aceEditorMain.getCursorPosition();
-                     reviewgram._mainEditorCursorPosition = cursorPosition;
-                     if (editorAutocompleteSendTimeoutHandle !== null) {
-                         clearTimeout(editorAutocompleteSendTimeoutHandle);
+                 me._mainEditor = ace.edit("editor_edit");
+                 me._mainEditor.setOption("firstLineNumber", me._editorRange.start);
+                 me._mainEditor.setOption("tabSize", 4)
+                 me._mainEditor.setTheme("ace/theme/solarized_dark");
+                 me._mainEditor.session.setMode(me.__fileNameToAceMode(me._editedFile.name));
+                 me._mainEditor.setValue(me._editedFile.editedPart);
+                 me._mainEditor.session.selection.on('changeCursor', function(o) {
+                     var cursorPosition = me._mainEditor.getCursorPosition();
+                     me._mainEditorCursorPosition = cursorPosition;
+                     if (me._autocompleteSendTimeoutHandle !== null) {
+                         clearTimeout(me._autocompleteSendTimeoutHandle);
                      }
-                     editorAutocompleteSendTimeoutHandle = setTimeout(sendAutocompleteRequest, 5000);
+                     me._autocompleteSendTimeoutHandle = setTimeout(function() {
+                         me.sendAutocompleteRequest(me._editedFile.langId);
+                     }, 5000);
                  });
                  $(".autocompletion .body").html("");
                  $(window).trigger('resize');
@@ -980,57 +1042,57 @@ function Reviewgram() {
             var e = $("#editCommand li.selected");
             if (e.length != 0) {
                 if (e.hasClass("add-line-to-begin")) {
-                    aceEditorMain.session.insert({"row": 0, "column": 0}, $("#commandLine").val() + lineSeparator);
+                    me._mainEditor.session.insert({"row": 0, "column": 0}, $("#commandLine").val() + me._editedFile.lineSeparator);
                     return;
                 }
                 if (e.hasClass("add-line-to-end")) {
-                    var cnt  = aceEditorMain.session.doc.getAllLines().length;
-                    aceEditorMain.session.insert({"row": cnt, "column": 0}, lineSeparator  + $("#commandLine").val());
+                    var cnt  = me._mainEditor.session.doc.getAllLines().length;
+                    me._mainEditor.session.insert({"row": cnt, "column": 0}, me._editedFile.lineSeparator  + $("#commandLine").val());
                     return;
                 }
                 if (e.hasClass("insert-line")) {
-                    var pos = aceEditorMain.getCursorPosition();
-                    aceEditorMain.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + lineSeparator);
+                    var pos = me._mainEditor.getCursorPosition();
+                    me._mainEditor.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + me._editedFile.lineSeparator);
                     return;
                 }
                 if (e.hasClass("delete-line")) {
-                    var pos = aceEditorMain.getCursorPosition();
-                    aceEditorMain.session.doc.removeLines(pos.row, pos.row);
+                    var pos = me._mainEditor.getCursorPosition();
+                    me._mainEditor.session.doc.removeLines(pos.row, pos.row);
                     return;
                 }
                 if (e.hasClass("replace-line")) {
-                    var pos = aceEditorMain.getCursorPosition();
-                    aceEditorMain.session.doc.removeLines(pos.row, pos.row);
-                    aceEditorMain.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + lineSeparator);
+                    var pos = me._mainEditor.getCursorPosition();
+                    me._mainEditor.session.doc.removeLines(pos.row, pos.row);
+                    me._mainEditor.session.insert({"row": pos.row, "column": 0}, $("#commandLine").val() + me._editedFile.lineSeparator);
                     return;
                 }
             }
         };
         $scope.insertTab = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            aceEditorMain.session.insert(pos, "\t");
-            aceEditorMain.focus();
+            var pos = me._mainEditor.getCursorPosition();
+            me._mainEditor.session.insert(pos, "\t");
+            me._mainEditor.focus();
         };
         $scope.insertFourSpaces = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            aceEditorMain.session.insert(pos, "    ");
-            aceEditorMain.focus();
+            var pos = me._mainEditor.getCursorPosition();
+            me._mainEditor.session.insert(pos, "    ");
+            me._mainEditor.focus();
         };
         $scope.removeTab = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.column != line.length) {
                 if (line[pos.column] == "\t") {
-                    aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column}, "end": {"row": pos.row, "column": pos.column + 1}});
-                    aceEditorMain.focus();
+                    me._mainEditor.session.remove({"start": {"row": pos.row, "column": pos.column}, "end": {"row": pos.row, "column": pos.column + 1}});
+                    me._mainEditor.focus();
                     return;
                 }
             }
             if (pos.column != 0) {
                 if (line[pos.column - 1] == "\t") {
-                    aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column - 1}, "end": {"row": pos.row, "column": pos.column}});
-                    aceEditorMain.focus();
+                    me._mainEditor.session.remove({"start": {"row": pos.row, "column": pos.column - 1}, "end": {"row": pos.row, "column": pos.column}});
+                    me._mainEditor.focus();
                     return;
                 }
             }
@@ -1043,8 +1105,8 @@ function Reviewgram() {
             ];
             for (var i = 0; i < poses.length; i++) {
                 if (line.substring(poses[i][0], poses[i][1]) ==  "    ") {
-                    aceEditorMain.session.remove({"start": {"row": pos.row, "column": poses[i][0] }, "end": {"row": pos.row, "column": poses[i][1]}});
-                    aceEditorMain.focus();
+                    me._mainEditor.session.remove({"start": {"row": pos.row, "column": poses[i][0] }, "end": {"row": pos.row, "column": poses[i][1]}});
+                    me._mainEditor.focus();
                     return;
                 }
             }
@@ -1053,46 +1115,51 @@ function Reviewgram() {
             $scope.removeTab();
         };
         $scope.removePreviousSymbol = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.column != 0) {
-                aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column - 1}, "end": {"row": pos.row, "column": pos.column}});
-                aceEditorMain.focus();
+                me._mainEditor.session.remove({"start": {"row": pos.row, "column": pos.column - 1}, "end": {"row": pos.row, "column": pos.column}});
+                me._mainEditor.focus();
                 return;
             }
         };
         $scope.removeNextSymbol = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.column != line.length) {
-                aceEditorMain.session.remove({"start": {"row": pos.row, "column": pos.column}, "end": {"row": pos.row, "column": pos.column + 1}});
-                aceEditorMain.focus();
+                me._mainEditor.session.remove({"start": {"row": pos.row, "column": pos.column}, "end": {"row": pos.row, "column": pos.column + 1}});
+                me._mainEditor.focus();
                 return;
             }
         };
         $scope.removePreviousLexeme = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
-            var line = lines[pos.row];
-            var tokens = tokenizePython(line);
-            var token = false;
-            for (var  i = 0; (i < tokens.length) && (token === false); i++) {
-                if (tokens[i][0] <= pos.column && pos.column <  tokens[i][1]) {
-                    token = i;
-                }
-            }
-            if (token === false) {
+            try {
+                var pos = me._mainEditor.getCursorPosition();
+                var lines = me._mainEditor.session.doc.getAllLines();
+                var line = lines[pos.row];
+                var factory = new TokenizerFactory();
+                var tokens = factory.create(me._editedFile.langId).tokenize(line);
+                var token = false;
                 for (var  i = 0; (i < tokens.length) && (token === false); i++) {
-                    if (tokens[i][0] <= pos.column && tokens[i][1] <= pos.column) {
+                    if (tokens[i][0] <= pos.column && pos.column <  tokens[i][1]) {
                         token = i;
                     }
                 }
-            }
-            if (token !== false) {
-                aceEditorMain.session.remove({"start": {"row": pos.row, "column": tokens[token][0]}, "end": {"row": pos.row, "column": tokens[token][1]}});
-                aceEditorMain.focus();
+                if (token === false) {
+                    for (var  i = 0; (i < tokens.length) && (token === false); i++) {
+                        if (tokens[i][0] <= pos.column && tokens[i][1] <= pos.column) {
+                            token = i;
+                        }
+                    }
+                }
+                if (token !== false) {
+                    me._mainEditor.session.remove({"start": {"row": pos.row, "column": tokens[token][0]}, "end": {"row": pos.row, "column": tokens[token][1]}});
+                    me._mainEditor.focus();
+                }
+            } catch (exc) {
+                console.log(exc);
             }
         };
         $scope.findNextLexeme  = function(pos, tokens) {
@@ -1112,109 +1179,129 @@ function Reviewgram() {
             return token;
         };
         $scope.removeNextLexeme = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
-            var line = lines[pos.row];
-            var tokens = tokenizePython(line);
-            var token = $scope.findNextLexeme(pos, tokens);
-            if (token !== false) {
-                aceEditorMain.session.remove({"start": {"row": pos.row, "column": tokens[token][0]}, "end": {"row": pos.row, "column": tokens[token][1]}});
-                aceEditorMain.focus();
+            try {
+                var pos = me._mainEditor.getCursorPosition();
+                var lines = me._mainEditor.session.doc.getAllLines();
+                var line = lines[pos.row];
+                var factory = new TokenizerFactory();
+                var tokens = factory.create(me._editedFile.langId).tokenize(line);
+                var token = $scope.findNextLexeme(pos, tokens);
+                if (token !== false) {
+                    me._mainEditor.session.remove({"start": {"row": pos.row, "column": tokens[token][0]}, "end": {"row": pos.row, "column": tokens[token][1]}});
+                    me._mainEditor.focus();
+                }
+            } catch(exc) {
+                console.log(exc);
             }
         };
         $scope.moveToNextSymbol = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.column != line.length) {
-                aceEditorMain.gotoLine(pos.row + 1, pos.column + 1);
+                me._mainEditor.gotoLine(pos.row + 1, pos.column + 1);
             } else {
                 if (pos.row < line.length - 1) {
-                    aceEditorMain.gotoLine(pos.row + 2, 0);
+                    me._mainEditor.gotoLine(pos.row + 2, 0);
                 }
             }
-            aceEditorMain.focus();
+            me._mainEditor.focus();
         };
         $scope.moveToPreviousSymbol = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.column != 0) {
-                aceEditorMain.gotoLine(pos.row + 1, pos.column - 1);
+                me._mainEditor.gotoLine(pos.row + 1, pos.column - 1);
             } else {
                 if (pos.row > 0) {
                     line = lines[pos.row - 1];
-                    aceEditorMain.gotoLine(pos.row, line.length);
+                    me._mainEditor.gotoLine(pos.row, line.length);
                 }
             }
-            aceEditorMain.focus();
+            me._mainEditor.focus();
         };
         $scope.moveToPrevRow = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.row > 0) {
-                aceEditorMain.gotoLine(pos.row, pos.column);
+                me._mainEditor.gotoLine(pos.row, pos.column);
             }
-            aceEditorMain.focus();
+            me._mainEditor.focus();
         };
         $scope.moveToNextRow = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
             if (pos.row < lines.length) {
-                aceEditorMain.gotoLine(pos.row + 2, pos.column);
+                me._mainEditor.gotoLine(pos.row + 2, pos.column);
             }
-            aceEditorMain.focus();
+            me._mainEditor.focus();
         };
         $scope.moveToBeginOfNextLexeme = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
-            var line = lines[pos.row];
-            var tokens = tokenizePython(line);
-            var token = $scope.findNextLexeme(pos, tokens);
-            if (token !== false) {
-                aceEditorMain.gotoLine(pos.row + 1, tokens[token][0]);
-                aceEditorMain.focus();
+            try {
+                var pos = me._mainEditor.getCursorPosition();
+                var lines = me._mainEditor.session.doc.getAllLines();
+                var line = lines[pos.row];
+                var factory = new TokenizerFactory();
+                var tokens = factory.create(me._editedFile.langId).tokenize(line);
+                var token = $scope.findNextLexeme(pos, tokens);
+                if (token !== false) {
+                    me._mainEditor.gotoLine(pos.row + 1, tokens[token][0]);
+                    me._mainEditor.focus();
+                }
+            } catch (exc) {
+                console.log(exc);
             }
         };
         $scope.moveToEndOfNextLexeme = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
-            var line = lines[pos.row];
-            var tokens = tokenizePython(line);
-            var token = $scope.findNextLexeme(pos, tokens);
-            if (token !== false) {
-                aceEditorMain.gotoLine(pos.row + 1, tokens[token][1]);
-                aceEditorMain.focus();
+            try {
+                var pos = me._mainEditor.getCursorPosition();
+                var lines = me._mainEditor.session.doc.getAllLines();
+                var line = lines[pos.row];
+                var factory = new TokenizerFactory();
+                var tokens = factory.create(me._editedFile.langId).tokenize(line);
+                var token = $scope.findNextLexeme(pos, tokens);
+                if (token !== false) {
+                    me._mainEditor.gotoLine(pos.row + 1, tokens[token][1]);
+                    me._mainEditor.focus();
+                }
+            } catch (exc) {
+                console.log(exc);
             }
         };
         $scope.moveToMiddleOfNextLexeme = function() {
-            var pos = aceEditorMain.getCursorPosition();
-            var lines = aceEditorMain.session.doc.getAllLines();
-            var line = lines[pos.row];
-            var tokens = tokenizePython(line);
-            var token = $scope.findNextLexeme(pos, tokens);
-            if (token !== false) {
-                aceEditorMain.gotoLine(pos.row + 1, parseInt((tokens[token][1] + tokens[token][0]) / 2));
-                aceEditorMain.focus();
+            try {
+                var pos = me._mainEditor.getCursorPosition();
+                var lines = me._mainEditor.session.doc.getAllLines();
+                var line = lines[pos.row];
+                var factory = new TokenizerFactory();
+                var tokens = factory.create(me._editedFile.langId).tokenize(line);
+                var token = $scope.findNextLexeme(pos, tokens);
+                if (token !== false) {
+                    me._mainEditor.gotoLine(pos.row + 1, parseInt((tokens[token][1] + tokens[token][0]) / 2));
+                    me._mainEditor.focus();
+                }
+            } catch (exc) {
+                console.log(exc);
             }
         };
         $scope.submitEdit = function() {
-            if (isEditRequestRunning) {
+            if (me._isEditRequestRunning) {
                 return;
             }
-            isEditRequestRunning = true;
-            getResultFileContent();
+            me._isEditRequestRunning = true;
+            me._getResultFileContent();
             $("#rcommit_edit #edit-syntax-error").html("");
             $("#rcommit_edit").css("display", "none");
             $("#rcommit_preloader").css('display', 'block');
             $scope.performSyntaxCheck();
         };
        $scope.performSyntaxCheck = function() {
-           var rangeEnd = editorRangeSelectEnd;
+           var rangeEnd = me._editorRange.end;
            if (rangeEnd == null) {
-               rangeEnd = editorRangeSelectStart;
+               rangeEnd = me._editorRange.start;
            }
            $.ajax({
                "method": "POST",
@@ -1222,13 +1309,14 @@ function Reviewgram() {
                "url": "/reviewgram/check_syntax/",
                'contentType': 'application/json',
                "data": JSON.stringify({
-                   "filename": editedFileName,
-                   "content": b64EncodeUnicode(resultFileContent),
-                   "start": editorRangeSelectStart,
-                   "end": rangeEnd
+                   "filename": me._editedFile.name,
+                   "content": b64EncodeUnicode(me._resultFileContent),
+                   "start":  me._editorRange.start,
+                   "end": rangeEnd,
+                   "langId": me._editedFile.langId
                }),
                "success": function(o) {
-                   isEditRequestRunning = false;
+                   me._isEditRequestRunning = false;
                    var error = true;
                    if ('errors' in o) {
                        error = false;
@@ -1252,7 +1340,7 @@ function Reviewgram() {
                            errorWrap += "Ошибка";
                            errorWrap += "</div>";
                            errorWrap += "<div class=\"reviewgram-error body\">";
-                           errorWrap += "Синтаксическая ошибка! При проверке через pyflakes, обнаружены следующие ошибки ниже:<br>" + text;
+                           errorWrap += "Синтаксическая ошибка! При проверке, обнаружены следующие ошибки ниже:<br>" + text;
                            errorWrap += "</div>";
                            errorWrap += "</div>";
                            $("#rcommit_edit #edit-syntax-error").html(errorWrap);
@@ -1291,7 +1379,7 @@ function Reviewgram() {
             $("#rcommit_confirm_error").css('display', 'none');
             $(".md_modal_title, .navbar-quick-media-back h4").html("Подтверждение");
             $(window).trigger('resize');
-            isEditRequestRunning = false;
+            me._isEditRequestRunning = false;
         };
         $scope.submitConfirmation = function() {
             $("#rcommit_confirm").css('display', 'none');
@@ -1302,16 +1390,16 @@ function Reviewgram() {
             $.ajax({
                 "method": "GET",
                 "dataType": "json",
-                "username": repoSettings.user,
-                "password": repoSettings.password,
-                "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches/" + encodeURIComponent(branchName),
+                "username": me._repoSettings.user,
+                "password": me._repoSettings.password,
+                "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/branches/" + encodeURIComponent(me._branchName),
                 "success": function(o) {
                     var error = true;
                     if ('commit' in o) {
                         if ('sha' in o['commit']) {
                             error = false;
                             var newLastCommit = o['commit']['sha'];
-                            if (lastCommit == newLastCommit) {
+                            if (me._lastCommit == newLastCommit) {
                                 if (step == 1) {
                                     //$scope.$dismiss();
                                      $scope.tryLock();
@@ -1352,7 +1440,7 @@ function Reviewgram() {
             });
         };
         $scope.tryLock = function() {
-            fetchOrCreateUUID(function(isNew, uuid, timestamp) {
+            me.__fetchOrCreateUUID(function(isNew, uuid, timestamp) {
                  $scope.tryPerformLock(uuid);
             });
         };
@@ -1360,10 +1448,10 @@ function Reviewgram() {
             $.ajax({
                 "method": "GET",
                 "dataType": "json",
-                "username": repoSettings.user,
-                "password": repoSettings.password,
+                "username": me._repoSettings.user,
+                "password": me._repoSettings.password,
                 "data": {
-                    "chatId" : reviewgram.getCurrentDialogPeerID(),
+                    "chatId" : me.getCurrentDialogPeerID(),
                     "uuid": uuid,
                 },
                 "url": "/reviewgram/try_lock/",
@@ -1406,14 +1494,14 @@ function Reviewgram() {
             $.ajax({
                 "method": "PUT",
                 "dataType": "json",
-                "username": repoSettings.user,
-                "password": repoSettings.password,
-                "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/contents/" + encodeURIComponent(editedFileName),
+                "username": me._repoSettings.user,
+                "password": me._repoSettings.password,
+                "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/contents/" + encodeURIComponent(me._editedFile.name),
                 'contentType': 'application/json',
                 "data": JSON.stringify({
                     "message": "Быстрое исправление через Reviewgram",
-                    "content": b64EncodeUnicode(resultFileContent),
-                    "sha": editedFileSha
+                    "content": b64EncodeUnicode(me._resultFileContent),
+                    "sha": me._editedFile.sha
                 }),
                 "success": function(o) {
                     var error = true;
@@ -1423,11 +1511,11 @@ function Reviewgram() {
                             var resultUrl = o['commit']['url'];
                             resultUrl = resultUrl.replace("api.", "").replace("/repos/", "/").replace("git/commits", "commit");
                             var sentRequestOptions = {};
-                            var repoUrl = "https://github.com/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/";
+                            var repoUrl = "https://github.com/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/";
                             var text = " отправил правку " + resultUrl + " в репозиторий " + repoUrl;
                             var apiPromise = MtpApiManager.invokeApi('messages.sendMessage', {
                               flags: 128,
-                              peer: AppPeersManager.getInputPeerByID(AppPeersManager.getPeerID(reviewgram.getCurrentDialog())),
+                              peer: AppPeersManager.getInputPeerByID(AppPeersManager.getPeerID(me.getCurrentDialog())),
                               message: text,
                               random_id: [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)],
                               reply_to_msg_id: 0,
@@ -1466,9 +1554,9 @@ function Reviewgram() {
                 $.ajax({
                     "method": "GET",
                     "dataType": "json",
-                    "username": repoSettings.user,
-                    "password": repoSettings.password,
-                    "url": "/github_api/repos/" + repoSettings.repo_user_name  + "/" + repoSettings.repo_same_name + "/branches",
+                    "username": me._repoSettings.user,
+                    "password": me._repoSettings.password,
+                    "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/branches",
                     "success": function(o) {
                         $("#rcommit_preloader").css('display', 'none');
                         $("#rcommit_branch_select").css('display', 'block');
@@ -1511,7 +1599,7 @@ function Reviewgram() {
                 $("#rcommit_edit #edit-syntax-error").html("");
                 $("#rcommit_confirm").css('display', 'none');
                 $(".md_modal_title, .navbar-quick-media-back h4").html("");
-                isEditRequestRunning = false;
+                me._isEditRequestRunning = false;
                 $(window).trigger('resize');
             }
         }
@@ -1533,9 +1621,9 @@ function Reviewgram() {
             $scope.fetchBranchesList();
         };
         setTimeout(function() {
-            getRepoSettings(reviewgram.getCurrentDialog(), function(o) {
-                initMicrophoneWidgets();
-                repoSettings = o;
+            me._getRepoSettings(me.getCurrentDialog(), function(o) {
+                me._initMicrophoneWidgets();
+                me._repoSettings = o;
                 if (o.repo_user_name.length == 0 || o.repo_same_name.length == 0 || o.user == 0 || o.password == 0) {
                     $("#rcommit_preloader").css('display', 'none');
                     $("#rcommit_error").css('display', 'block');
