@@ -85,6 +85,7 @@ CREATE TABLE repository_autocompletion_lexemes(
 ) ENGINE=InnoDB
 CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
+ALTER TABLE `repository_autocompletion_lexemes` ADD KEY `IX_LANG_ID`('LANG_ID')
 
 CREATE TABLE languages(
     ID BIGINT NOT NULL AUTO_INCREMENT,

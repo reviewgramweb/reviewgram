@@ -2,6 +2,9 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from flask import Flask, request, jsonify, abort
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
+from reviewgramdb import *
+from repoutils import *
+from languagefactory import LanguageFactory
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -16,8 +19,6 @@ import base64
 import traceback
 import requests
 import time
-import tempfile
-import subprocess
 import math
 import re
 import jedi
@@ -62,45 +63,20 @@ class AESCipher(object):
         raw_bytes = self._pad(raw)
         raw_size_bytes = struct.pack('<i', raw_size)
         iv = Random.new().read(AES.block_size)
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
-        return base64.b64encode(iv + raw_size_bytes + cipher.encrypt(raw_bytes))
+        cipher = AES.new(self.key.encode("utf8"), AES.MODE_CBC, iv)
+        return base64.b64encode(iv + raw_size_bytes + cipher.encrypt(raw_bytes.encode("utf8")))
 
     def decrypt(self, enc):
         enc = base64.b64decode(enc)
         iv = enc[:self.bs]
         raw_size = struct.unpack('<i', enc[self.bs:self.bs + 4])[0]
-        cipher = AES.new(self.key, AES.MODE_CBC, iv)
+        cipher = AES.new(self.key.encode("utf8"), AES.MODE_CBC, iv)
         raw_bytes = cipher.decrypt(enc[self.bs + 4:])
         raw = raw_bytes[:raw_size].decode('utf_8')
         return raw
 
-# Формирует имя папки репозитория
-def repo_folder_name(repoUserName, repoName, branchId):
-    return repoUserName + "_" + repoName + "_" + re.sub(r"[^0-9a-zA-Z_]", "__", branchId)
-
-
-# существует ли папка репозитория
-def is_repo_folder_exists(repoUserName, repoName, branchId):
-    folderName = repo_folder_name(repoUserName, repoName, branchId)
-    path = os.path.dirname(os.path.abspath(__file__))
-    fullPath = path + "/repos/" + folderName + "/.git/"
-    return os.path.isdir(fullPath)
-
-# полная папка репозитория
-def full_repo_folder_name(repoUserName, repoName, branchId):
-    folderName = repo_folder_name(repoUserName, repoName, branchId)
-    path = os.path.dirname(os.path.abspath(__file__))
-    fullPath = path + "/repos/" + folderName + "/"
-    return fullPath
-
-# Пытается вставить задачу на клонирование репозитория
-def try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, branchId):
-    result = select_and_fetch_one(con, "SELECT * FROM `repository_cache_storage_table` WHERE `REPO_SITE` = %s AND `REPO_USER_NAME` = %s  AND `REPO_SAME_NAME` = %s  AND `BRANCH_ID` = %s LIMIT 1" , [repoSite, repoUserName, repoSameName, branchId])
-    if (result is None):
-        execute_update(con, "INSERT INTO `repository_cache_storage_table`(REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, BRANCH_ID, TSTAMP) VALUES (%s, %s, %s, %s, 0)", [repoSite, repoUserName, repoSameName, branchId])
-
 # Строит запрос для автодополнения из таблицы по полному совпадению
-def build_exact_match_autocomplete_query(amount, limit):
+def build_exact_match_autocomplete_query(amount, limit, langId):
 	if (amount == 0):
 		return ""
 	if (amount == 1):
@@ -112,7 +88,7 @@ def build_exact_match_autocomplete_query(amount, limit):
 				"	r1.LEXEME_ID = 0 AND r1.`TEXT` = %s " \
 				"AND r2.LEXEME_ID = 1 " \
 				"AND r1.ROW_ID = r2.ROW_ID " \
-				"LIMIT " + str(limit)
+				"AND r1.`LANG_ID` = " + str(langId) + " LIMIT " + str(limit)
 	result = "SELECT DISTINCT(r" + str(amount + 1) +".TEXT) "
 	result += " FROM "
 	i = 1
@@ -131,11 +107,12 @@ def build_exact_match_autocomplete_query(amount, limit):
 	while (i < amount):
 		result += "    AND r1.ROW_ID = r" + str(i + 2) + ".ROW_ID "
 		i = i + 1
+	result += " AND r1.`LANG_ID` = " + str(langId)
 	result += " LIMIT " + str(limit)
 	return result
 
 # Строит запрос для автодополнения  из таблицы по неполному совпадению
-def build_non_exact_match_autocomplete_query(amount, limit):
+def build_non_exact_match_autocomplete_query(amount, limit, langId):
 	if (amount == 0):
 		return ""
 	if (amount == 1):
@@ -144,7 +121,7 @@ def build_non_exact_match_autocomplete_query(amount, limit):
 			   "  `repository_autocompletion_lexemes` AS r1 " \
 			   "WHERE " \
 			   "r1.`LEXEME_ID` = 0 AND levenshtein(r1.`TEXT`, %s) <= CHAR_LENGTH(r1.`TEXT`) / 2  " \
-			   "LIMIT " + str(limit)
+			   "AND r1.`LANG_ID` = " + str(langId) + " LIMIT " + str(limit)
 	result = "SELECT DISTINCT(r" + str(amount) +".TEXT) "
 	result += " FROM "
 	i = 1
@@ -163,15 +140,16 @@ def build_non_exact_match_autocomplete_query(amount, limit):
 	while (i <= amount):
 		result += "AND r1.ROW_ID = r"  + str(i) + ".ROW_ID "
 		i = i + 1
+	result += " AND r1.`LANG_ID` = " + str(langId)
 	result += " LIMIT " + str(limit)
 	return result
 
 # Пытается сделать автодополнение через таблицу
-def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
+def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount, langId):
     if (len(lexemes) == 0):
         return []
     exactLimit = math.ceil(maxAmount / 2)
-    exactQuery = build_exact_match_autocomplete_query(len(lexemes), exactLimit)
+    exactQuery = build_exact_match_autocomplete_query(len(lexemes), exactLimit, langId)
     exactRows = []
     try:
         with Timeout(seconds = 3):
@@ -196,7 +174,7 @@ def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
             'name_with_symbols': row[0]
         })
     nonExactLimit = maxAmount - len(result)
-    nonExactQuery = build_non_exact_match_autocomplete_query(len(lexemes), nonExactLimit)
+    nonExactQuery = build_non_exact_match_autocomplete_query(len(lexemes), nonExactLimit, langId)
     nonExactRows = []
     try:
         with Timeout(seconds = 3):
@@ -224,50 +202,11 @@ def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount):
 
 
 # Пытается сделать автодополнение через таблицу
-def table_try_autocomplete(con, lexemes):
+def table_try_autocomplete(con, lexemes, langId):
     if (len(lexemes) == 0):
         return []
     maxAmount = int(os.getenv("AUTOCOMPLETE_MAX_AMOUNT"))
-    return table_try_autocomplete_with_max_amount(con, lexemes, maxAmount)
-
-#  Делает автодополнение через jedi, используя даннные папки и содержимое
-def jedi_try_autocomplete_with_folder(content, line, position, folderName):
-    result = []
-    try:
-        script = jedi.Script(content, line, position, folderName)
-        completions = script.completions()
-    except jedi.NotFoundError:
-        completions = []
-    for completion in completions:
-        result.append({
-            'append_type': 'no_space',
-            'complete': completion.complete,
-            'name_with_symbols': completion.name_with_symbols
-        })
-    return result
-
-# Пытается сделать автодополнение через jedi,  добавляя репозиторий на клонирование в процессе
-def jedi_try_autocomplete(con, chatId, branchId, content, line, position):
-    try:
-        result = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME FROM `repository_settings` WHERE `CHAT_ID` = " + str(chatId) + " LIMIT 1"  ,[])
-        if (result is not None):
-            repoSite = result[0]
-            repoUserName = result[1]
-            repoSameName = result[2]
-            result = []
-            if (is_repo_folder_exists(repoUserName, repoSameName, branchId)):
-                folderName = full_repo_folder_name(repoUserName, repoSameName, branchId)
-                result = jedi_try_autocomplete_with_folder(content, line, position, folderName)
-            else:
-                try_insert_cloning_repo_task(con, repoSite, repoUserName, repoSameName, branchId)
-                result =  jedi_try_autocomplete_with_folder(content, line, position, ".")
-            return result
-        else:
-            return []
-    except Exception as e:
-        print(traceback.format_exc())
-        append_to_log("/reviewgram/jedi_try_autocomplete: Exception " + traceback.format_exc())
-        return []
+    return table_try_autocomplete_with_max_amount(con, lexemes, maxAmount, langId)
 
 # Получение вложенных данных из словаря
 def safe_get_key(dict, keys):
@@ -278,41 +217,6 @@ def safe_get_key(dict, keys):
         else:
             return None
     return tmp
-
-# Соединение с БД
-def connect_to_db():
-    return pymysql.connect(os.getenv("MYSQL_HOST"), os.getenv("MYSQL_USER"), os.getenv("MYSQL_PASSWORD"), os.getenv("MYSQL_DB"))
-
-# Получение первой строки по запросу из БД
-def select_and_fetch_all(con, query, params):
-    cur = con.cursor()
-    cur.execute(query, params)
-    result = cur.fetchall()
-    cur.close()
-    return result
-
-# Получение первой строки по запросу из БД
-def select_and_fetch_one(con, query, params):
-    cur = con.cursor()
-    cur.execute(query, params)
-    result = cur.fetchone()
-    cur.close()
-    return result
-
-# Получение первой колонки и строки по запросу из БД
-def select_and_fetch_first_column(con, query, params):
-    row  = select_and_fetch_one(con, query, params)
-    if (row is None):
-        return None
-    else:
-        return row[0]
-
-# Выполнение запроса к БД
-def execute_update(con, query, params):
-    cur = con.cursor()
-    cur.execute(query, params)
-    con.commit()
-    cur.close()
 
 # Запись данных в лог
 def append_to_log(text):
@@ -384,38 +288,6 @@ def is_user_in_chat(uuid, chatId):
         append_to_log("/reviewgram/register_chat_id_for_token/: Exception " + traceback.format_exc())
         return False
 
-
-# Группирует ошибки из pyflakes в кортежи (строка, список ошибок)
-def build_error_line_groups(fileName, errorContent):
-    errorContentLines = errorContent.split("\n")
-    errorsByLines = []
-    for line in errorContentLines:
-        if (line.startswith(fileName)):
-            lineWithoutName = line[(len(fileName)+1):]
-            secondColonPos = lineWithoutName.index(":")
-            numberAsString = lineWithoutName[:secondColonPos]
-            lineNo = int(numberAsString)
-            tuple = (lineNo, [line])
-            errorsByLines.append(tuple)
-        else:
-            if (len(errorsByLines) != 0):
-                errorsByLines[len(errorsByLines) - 1][1].append(line)
-    return errorsByLines
-
-# Запускает PyFlakes
-def run_pyflakes(name, content, start, end):
-    with tempfile.NamedTemporaryFile() as temp:
-        temp.write(content.encode("UTF-8"))
-        temp.flush()
-        fileName = temp.name
-        result = subprocess.run(['pyflakes', fileName], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        errorContent = result.stderr.decode("UTF-8")
-        errors = build_error_line_groups(fileName, errorContent)
-        ownErrors = [error for error in errors if ((error[0] >= start) and (error[0] <= end))]
-        ownErrors = list(map(lambda x:"\n".join(x[1]), ownErrors))
-        ownErrors = "\n".join(ownErrors).replace(fileName, name)
-        return ownErrors
-
 @app.route('/')
 def index():
     return 'OK'
@@ -474,15 +346,15 @@ def get_repo_settings():
     if (is_user_in_chat(uuid, chatId)):
         con = connect_to_db()
         with con:
-            row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
+            row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
             if (row is not None):
                 password = ""
                 if (len(row[4]) > 0):
                     c = AESCipher()
                     password = c.decrypt(row[4])
-                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8')})
+                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5] })
             else:
-                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": ""})
+                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1})
     else:
         abort(404)
 
@@ -495,6 +367,7 @@ def set_repo_settings():
     repoSameName = request.values.get("repoSameName")
     user = request.values.get("user")
     password = request.values.get("password")
+    langId = request.values.get("langId")
     if (is_user_in_chat(uuid, chatId)):
 
         if (repoUserName is None):
@@ -527,16 +400,27 @@ def set_repo_settings():
                     return jsonify({"error": "Не указан пароль"})
             except Exception as e:
                 return jsonify({"error": "Не указан пароль"})
+        
+        con = connect_to_db()
+        if (langId is None):
+            return jsonify({"error": "Не указан ID языка"})
+        else:
+            try:
+                langId = int(langId)
+                row = select_and_fetch_one(con, "SELECT * FROM `languages` WHERE `ID` = %s LIMIT 1", [langId])
+                if (row is None):
+                    return jsonify({"error": "Не найден язык"})
+            except Exception as e:
+                return jsonify({"error": "Не распарсен язык"})
 
         c = AESCipher()
         password = c.encrypt(password)
-        con = connect_to_db()
         with con:
             row = select_and_fetch_one(con, "SELECT * FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
             if (row is not None):
-                execute_update(con, "UPDATE `repository_settings` SET REPO_SITE = %s, REPO_USER_NAME = %s, REPO_SAME_NAME = %s, USER = %s, PASSWORD = %s WHERE CHAT_ID = %s", ['github.com', repoUserName, repoSameName, user, password, chatId])
+                execute_update(con, "UPDATE `repository_settings` SET REPO_SITE = %s, REPO_USER_NAME = %s, REPO_SAME_NAME = %s, USER = %s, PASSWORD = %s, LANG_ID = %s WHERE CHAT_ID = %s", ['github.com', repoUserName, repoSameName, user, password, langId, chatId])
             else:
-                execute_update(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD) VALUES (%s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password])
+                execute_update(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID) VALUES (%s, %s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password, langId])
             return jsonify({"error": ""})
     else:
         abort(404)
@@ -569,9 +453,11 @@ def check_syntax():
         content = safe_get_key(data, ["content"])
         start = safe_get_key(data, ["start"])
         end = safe_get_key(data, ["end"])
-        if ((fileName is not None) and (content is not None) and (start is not None) and (end is not None)):
+        langId = safe_get_key(data, ["langId"])
+        if ((fileName is not None) and (content is not None) and (start is not None) and (end is not None) and (langId is not None)):
             fileContent = base64.b64decode(content)
-            errors = run_pyflakes(fileName, fileContent.decode('UTF-8'), start, end)
+            langId = int(langId)
+            errors = LanguageFactory().create(langId).checkSyntax(fileName, fileContent.decode('UTF-8'), start, end)
             errors = base64.b64encode(errors.encode('UTF-8')).decode('UTF-8')
             return jsonify({"errors": errors})
     except Exception as e:
@@ -590,23 +476,25 @@ def get_autocompletions():
         position = int(safe_get_key(data, ["position"]))
         chatId = int(safe_get_key(data, ["chatId"]))
         branchId = safe_get_key(data, ["branchId"])
-        if ((tokens is not None) and (content is not None) and (line is not None) and (position is not None) and (chatId is not None) and (branchId is not None)):
+        langId = safe_get_key(data, ["langId"])
+        if ((tokens is not None) and (content is not None) and (line is not None) and (position is not None) and (chatId is not None) and (branchId is not None) and (langId is not None)):
             if (not isinstance(tokens, list)):
                 raise Exception("Error!")
+            langId = int(langId)
             fileContent = base64.b64decode(content)
             con1 = connect_to_db()
             con2 = connect_to_db()
             result = []
             try:
                 with con1:
-                    result = result + jedi_try_autocomplete(con1, chatId, branchId, fileContent, line, position)
+                    result = result +  LanguageFactory().create(langId).getAutocompletions(con1, tokens, fileContent, line, position, chatId, branchId,)
             except Exception as e:
                 append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
             append_to_log("/reviewgram/get_autocompletions: Proceeding to table")
             try:
                 with con2:
                     if (len(result) == 0):
-                        result = result + table_try_autocomplete(con2, tokens)
+                        result = result + table_try_autocomplete(con2, tokens, langId)
             except Exception as e:
                 append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
             append_to_log("/reviewgram/get_autocompletions: Proceeding to result")
