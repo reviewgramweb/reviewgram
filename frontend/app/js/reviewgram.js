@@ -304,7 +304,7 @@ function Reviewgram() {
         }
         if (this._recorder == null) {
             try {
-                this._recorder = new Recorder();
+                this._recorder = new Recorder({"numberOfChannels" : 1, "encoderSampleRate": 48000});
                 this._recorder.ondataavailable = function( typedArray ) {
                     var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
                     var fileName = new Date().toISOString() + ".wav";
