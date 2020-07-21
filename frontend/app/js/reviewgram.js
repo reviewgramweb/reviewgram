@@ -377,7 +377,7 @@ function Reviewgram() {
         });
     };
     this._initSearchHintWidgets = function() {
-        var makeSearchSubstringHandler = function(dependentSelector) {
+        var makeSearchSubstringHandler = function(removeSlash, dependentSelector) {
             return function() {
                 var a = $(this).val().trim();
                 var elements = $(dependentSelector);
@@ -387,6 +387,9 @@ function Reviewgram() {
                     var match = true;
                     if (a.length > 0) {
                         match = (name.indexOf(a) != -1);
+                        if (!match) {
+                            match = matchesNonExact(a, name, removeSlash);
+                        }
                     }
                     if (match) {
                           element.removeClass("hidden").css("display", "block");
@@ -397,8 +400,8 @@ function Reviewgram() {
           };
         };
 
-        $("body").on("cut paste keyup", "#branchNameSearch", makeSearchSubstringHandler("#branchName ul li"));
-        $("body").on("cut paste keyup", "#commitFileSearch", makeSearchSubstringHandler("#commitFile ul li"));
+        $("body").on("cut paste keyup", "#branchNameSearch", makeSearchSubstringHandler(true, "#branchName ul li"));
+        $("body").on("cut paste keyup", "#commitFileSearch", makeSearchSubstringHandler(false, "#commitFile ul li"));
     };
     this._initSelectBoxes = function() {
         $("body").on("click", ".reviewgram-select-box li", function() {
