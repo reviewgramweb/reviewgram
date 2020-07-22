@@ -150,6 +150,16 @@ function Reviewgram() {
         ".pri": null,
         ".mod": null,
     };
+    // @var {Number} текущей рекордер
+    this._currentRecorderId = 0;
+    // @var {Boolean} нужно ли добавить результат распознования или заменить текст
+    this._appendRecordResult = false;
+    // @var {Number} текущий хендл таймаута записи
+    this._recordTimerTimeoutHandle = 0;
+    // @var {Number} таймаут для записи
+    this._recordTimerTimeout = 300000;
+    // @var {Blob} блоб для записи
+    this._recordBlob = null;
     // @var {Boolean} запущен ли запрос на редактирование
     this._isEditRequestRunning = false;
     // @var {Number} хендл на автодополнение
@@ -314,28 +324,7 @@ function Reviewgram() {
             try {
                 this._recorder = new Recorder({"numberOfChannels" : 1, "encoderSampleRate": 48000});
                 this._recorder.ondataavailable = function( typedArray ) {
-                    var dataBlob = new Blob( [typedArray], { type: 'audio/wav' } );
-                    var fileName = new Date().toISOString() + ".wav";
-
-                    dataBlob.arrayBuffer().then(function(o) { editedSoundFileBlob = new Uint8Array(o); });
-                    /*
-                    var url = URL.createObjectURL( dataBlob );
-
-                    var audio = document.createElement('audio');
-                    audio.controls = true;
-                    audio.src = url;
-
-                    var link = document.createElement('a');
-                    link.href = url;
-                    link.download = fileName;
-                    link.innerHTML = link.download;
-
-                    var li = document.createElement('li');
-                    li.appendChild(link);
-                    li.appendChild(audio);
-
-                    recordingslist.appendChild(li);
-                    */
+                    me._recordBlob = new Blob( [typedArray], { type: 'audio/ogg' } );
                 };
             } catch (exc) {
                   // Если голосовой ввод не поддерживается браузером - выключаем его.
@@ -344,16 +333,18 @@ function Reviewgram() {
         }
         var me = this;
         e.find(".button-wrapper.common").click(function() {
-            currentRecorderId = parseInt($(this).attr('specific-id'));
             var parent = $(this).closest(".reviewgram-microphone-widget");
+            me._currentRecorderId = parseInt(parent.attr('specific-id'));
             parent.removeClass("append").removeClass("write");
             if ($(this).hasClass("write"))
             {
+                me._appendRecordResult = false;
                 parent.find(".button-wrapper.common.append").css("display", "none");
                 parent.addClass("write");
             }
             else
             {
+                me._appendRecordResult = true;
                 parent.find(".button-wrapper.common.write").css("display", "none");
                 parent.addClass("append");
             }
@@ -362,21 +353,46 @@ function Reviewgram() {
                 parent.addClass("recognizing");
                 parent.find(".label").html("Производится<br/> распознавание");
                 me._recorder.stop();
-                // TODO: callback here
+                var waitForDataAndStartRecognizing = function() {
+                    if (me._recordBlob == null) {
+                        setTimeout(waitForDataAndStartRecognizing, 1000);
+                    } else {
+                        var formData = new FormData();
+                        formData.append("record", me._recordBlob, "record.ogg");
+                        if (me._currentRecorderId  == 2) {
+                            formData.append("langId", me._editedFile.langId);
+                        }
+                        makeRepeatedRequest({
+                            "url": "/reviewgram/start_recognizing/",
+                            "data": formData,
+                            "method": "POST",
+                            "cache" : false,
+                            "contentType" : false,
+                            "processData" : false
+                        }, function(o) {
+                            // Write id here and start polling
+                        })
+                    }
+                }
+                waitForDataAndStartRecognizing();
             } else {
               if (parent.hasClass("recognizing")) {
                   parent.removeClass("recognizing");
                   parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
                   $(".btn-next-tab").removeAttr("disabled");
                   parent.find(".button-wrapper.common").css("display", "inline-block");
-                  // TODO: callback here
+                  // TODO: clear polling
               } else {
                   parent.addClass("in-process");
                   parent.find(".label").html("Идёт запись");
+                  me._recordTimerTimeoutHandle = setTimeout(function() {
+                    $(this).trigger("click");
+                  }, me._recordTimerTimeout);
                   me._recorder.start().catch(function(exc){
                       window.alert( exc.message );
                       parent.remove();
                       $(".btn-next-tab").removeAttr("disabled");
+                      clearTimeout(me._recordTimerTimeoutHandle);
                   });
                   $(".btn-next-tab").attr("disabled", "disabled");
                   // TODO: callback here
