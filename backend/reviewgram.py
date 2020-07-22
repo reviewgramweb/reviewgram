@@ -24,6 +24,7 @@ import re
 import jedi
 import errno
 import signal
+import uuid
 
 load_dotenv(find_dotenv())
 
@@ -510,8 +511,25 @@ def get_autocompletions():
     except Exception as e:
         append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
     return jsonify([])
-
-
+    
+@app.route('/reviewgram/start_recognizing/', methods=['POST'])
+def start_recognizing():
+    langId = request.form.get("langId")
+    record = request.files.get("record")
+    if (request.form["langId"] is not None):
+        append_to_log("/reviewgram/start_recognizing: " + request.form["langId"])
+    if (record is None):
+        return jsonify([])
+    record.seek(0, os.SEEK_END)
+    fileLength = record.tell()
+    if (fileLength >= int(os.getenv("MAX_RECORD_SIZE")) * 1024 * 1024):
+        return jsonify({"error": "file is too large: " + str(fileLength) })
+    fileName = os.getenv("APP_FOLDER") + "records/" + str(uuid.uuid4()) + "-" +  str(time.time()) + ".ogg"
+    append_to_log("/reviewgram/start_recognizing: " + fileName)
+    record.seek(0, os.SEEK_SET)
+    record.save(fileName)
+    return jsonify({"success": 22, "fileName": fileName})
+ 
 if __name__ == '__main__':
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
