@@ -516,8 +516,8 @@ def get_autocompletions():
 def start_recognizing():
     langId = request.form.get("langId")
     record = request.files.get("record")
-    if (request.form["langId"] is not None):
-        append_to_log("/reviewgram/start_recognizing: " + request.form["langId"])
+    if (request.form.get("langId") is not None):
+        append_to_log("/reviewgram/start_recognizing: " + request.form.get("langId"))
     if (record is None):
         return jsonify([])
     record.seek(0, os.SEEK_END)
@@ -528,7 +528,11 @@ def start_recognizing():
     append_to_log("/reviewgram/start_recognizing: " + fileName)
     record.seek(0, os.SEEK_SET)
     record.save(fileName)
-    return jsonify({"success": 22, "fileName": fileName})
+    con = connect_to_db()
+    if (langId is None):
+        langId = 0
+    rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID) VALUES (%s, %s)", [fileName, langId])
+    return jsonify({"success": rowId, "fileName": fileName})
  
 if __name__ == '__main__':
     gunicorn_logger = logging.getLogger("gunicorn.error")

@@ -35,3 +35,12 @@ def execute_update(con, query, params):
     cur.execute(query, params)
     con.commit()
     cur.close()
+    
+ # Выполнение запроса к БД
+def execute_insert(con, query, params):
+    cur = con.cursor()
+    cur.execute(query, params)
+    con.commit()
+    rowid = cur.lastrowid
+    cur.close()
+    return rowid
