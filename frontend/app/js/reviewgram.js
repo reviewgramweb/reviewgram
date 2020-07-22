@@ -126,7 +126,7 @@ function Reviewgram() {
     // @var {String} хеш последнего коммита
     this._lastCommit = "";
     // @var {String[]} поддерживаемые расширения для файлов
-    this._allowedFileExtensions = [".txt", ".py"];
+    this._allowedFileExtensions = [".txt", ".py", ".dat", ".inc", ".pri", ".mod"];
     // @var {Number} время жизни токена авторизациии Reviewgram в минутах
     this._tokenLiveCountMinutes = 150;
     // @var {Number} число секунд в минуте
@@ -137,10 +137,19 @@ function Reviewgram() {
     this.langIdsToNames = {
         1 : "Python"
     };
-    // @var {Object} соотношения раширений к режимам AceEditor
-    this._extsToModes = {".py": "ace/mode/python"};
+    // @var {Object} ID языков к режимам
+    this.langIdsToModes = {
+        1 : "ace/mode/python"
+    };
     // @var {Object} соотношения раширений c ID языков
-    this._extsToLangIds = {".py": 1};
+    this._extsToLangIds = {
+        ".txt": null,
+        ".py": 1,
+        ".dat": null,
+        ".inc": null,
+        ".pri": null,
+        ".mod": null,
+    };
     // @var {Boolean} запущен ли запрос на редактирование
     this._isEditRequestRunning = false;
     // @var {Number} хендл на автодополнение
@@ -199,14 +208,10 @@ function Reviewgram() {
     // @return {String} имя файла
     this.__fileNameToAceMode = function(fileName) {
         var name = fileName.toLowerCase();
-        for (var key in this._extsToModes) {
-            if (this._extsToModes.hasOwnProperty(key)) {
-                if (name.endsWith(key)) {
-                    return this._extsToModes[key];
-                }
-            }
+        if (name.endsWith(".txt")) {
+            return  "ace/mode/plain_text";
         }
-        return "ace/mode/plain_text";
+        return this.langIdsToModes[this.__fileNameToLangId(fileName)];
     };
     // Преобарзует имя файла в режим ACE Editor
     // @var {String} fileName имя файла
@@ -216,11 +221,14 @@ function Reviewgram() {
         for (var key in this._extsToLangIds ) {
             if (this._extsToLangIds.hasOwnProperty(key)) {
                 if (name.endsWith(key)) {
-                    return this._extsToLangIds[key];
+                    var id =  this._extsToLangIds[key];
+                    if (id == null) {
+                        return this._repoSettings.langId;
+                    }
                 }
             }
         }
-        return "ace/mode/plain_text";
+        return this._repoSettings.langId;
     };
     // Получение настроек репозитория
     // @var {String} ID чата
