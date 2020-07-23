@@ -157,7 +157,7 @@ function Reviewgram() {
     // @var {Number} текущий хендл таймаута записи
     this._recordTimerTimeoutHandle = 0;
     // @var {Number} таймаут для записи
-    this._recordTimerTimeout = 300000;
+    this._recordTimerTimeout = 180000;
     // @var {Blob} блоб для записи
     this._recordBlob = null;
     // @var {Boolean} запущен ли запрос на редактирование
@@ -336,6 +336,7 @@ function Reviewgram() {
             var parent = $(this).closest(".reviewgram-microphone-widget");
             me._currentRecorderId = parseInt(parent.attr('specific-id'));
             parent.removeClass("append").removeClass("write");
+            var btn = $(this);
             if ($(this).hasClass("write"))
             {
                 me._appendRecordResult = false;
@@ -362,6 +363,7 @@ function Reviewgram() {
                         if (me._currentRecorderId  == 2) {
                             formData.append("langId", me._editedFile.langId);
                         }
+                        formData.append("pad", 1);
                         makeRepeatedRequest({
                             "url": "/reviewgram/start_recognizing/",
                             "data": formData,
@@ -380,21 +382,26 @@ function Reviewgram() {
                   parent.removeClass("recognizing");
                   parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
                   $(".btn-next-tab").removeAttr("disabled");
+                  $(".btn.cancel").removeAttr("disabled");
                   parent.find(".button-wrapper.common").css("display", "inline-block");
                   // TODO: clear polling
               } else {
                   parent.addClass("in-process");
                   parent.find(".label").html("Идёт запись");
                   me._recordTimerTimeoutHandle = setTimeout(function() {
-                    $(this).trigger("click");
+                    btn.trigger("click");
+                    me._recordTimerTimeoutHandle = null;
                   }, me._recordTimerTimeout);
                   me._recorder.start().catch(function(exc){
                       window.alert( exc.message );
                       parent.remove();
                       $(".btn-next-tab").removeAttr("disabled");
+                      $(".btn.cancel").removeAttr("disabled");
                       clearTimeout(me._recordTimerTimeoutHandle);
+                      me._recordTimerTimeoutHandle = null;
                   });
                   $(".btn-next-tab").attr("disabled", "disabled");
+                  $(".btn.cancel").attr("disabled", "disabled");
                   // TODO: callback here
               }
             }
@@ -1647,6 +1654,13 @@ function Reviewgram() {
             $("#rcommit_confirm").css('display', 'none');
             $scope.fetchBranchesList();
         };
+
+        $(".btn-next-tab").removeAttr("disabled");
+        $(".btn.cancel").removeAttr("disabled");
+        if (me._recordTimerTimeoutHandle != null && me._recordTimerTimeoutHandle != 0) {
+            clearTimeout(me._recordTimerTimeoutHandle);
+            me._recordTimerTimeoutHandle = null;
+        }
         setTimeout(function() {
             me._getRepoSettings(me.getCurrentDialog(), function(o) {
                 me._initMicrophoneWidgets();
