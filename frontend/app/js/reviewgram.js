@@ -407,6 +407,7 @@ function Reviewgram() {
                         formData.append("record", me._recordBlob, "record.ogg");
                         if (me._currentRecorderId  == 2) {
                             formData.append("langId", me._editedFile.langId);
+                            formData.append("content", me._getResultFileContent());
                         }
                         formData.append("pad", 1);
                         makeRepeatedRequest({

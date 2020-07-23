@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, abort
 from dotenv import load_dotenv, find_dotenv
 from datetime import datetime
 from reviewgramdb import *
+from reviewgramlog import *
 from repoutils import *
 from languagefactory import LanguageFactory
 
@@ -218,14 +219,6 @@ def safe_get_key(dict, keys):
         else:
             return None
     return tmp
-
-# Запись данных в лог
-def append_to_log(text):
-    date_time_now = datetime.now()
-    str_date_time = date_time_now.strftime("%d-%m-%Y (%H:%M:%S)")
-    text_file = open(os.getenv("APP_FOLDER") + "/log.txt", "a")
-    text_file.write("["  + str_date_time + "]" + text + "\n")
-    text_file.close()
 
 # Вставляет или обновляет соотношение токена с чатом
 def  insert_or_update_token_to_chat(con, chatId, uuid):
@@ -515,7 +508,10 @@ def get_autocompletions():
 @app.route('/reviewgram/start_recognizing/', methods=['POST'])
 def start_recognizing():
     langId = request.form.get("langId")
+    content = request.form.get("content")
     record = request.files.get("record")
+    if (content is None):
+        content = ""
     if (request.form.get("langId") is not None):
         append_to_log("/reviewgram/start_recognizing: " + request.form.get("langId"))
     if (record is None):
@@ -531,7 +527,7 @@ def start_recognizing():
     con = connect_to_db()
     if (langId is None):
         langId = 0
-    rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID) VALUES (%s, %s)", [fileName, langId])
+    rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID, CONTENT) VALUES (%s, %s, %s)", [fileName, langId, content])
     return jsonify({"id": rowId})
     
 @app.route('/reviewgram/recognizing_status/', methods=['GET'])
