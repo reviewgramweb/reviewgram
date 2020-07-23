@@ -532,7 +532,11 @@ def start_recognizing():
     if (langId is None):
         langId = 0
     rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID) VALUES (%s, %s)", [fileName, langId])
-    return jsonify({"success": rowId, "fileName": fileName})
+    return jsonify({"id": rowId})
+    
+@app.route('/reviewgram/recognizing_status/', methods=['GET'])
+def recognizing_status():
+    return jsonify({"status": "ok", "result": "status"})
  
 if __name__ == '__main__':
     gunicorn_logger = logging.getLogger("gunicorn.error")

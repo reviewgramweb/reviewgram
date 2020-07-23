@@ -160,6 +160,10 @@ function Reviewgram() {
     this._recordTimerTimeout = 180000;
     // @var {Blob} блоб для записи
     this._recordBlob = null;
+    // @var {Number} ID таски распознавания
+    this._recognizingPollId = null;
+    // @var {Number} ID таски поллинга
+    this._recognizingPollTaskHandle = null;
     // @var {Boolean} запущен ли запрос на редактирование
     this._isEditRequestRunning = false;
     // @var {Number} хендл на автодополнение
@@ -349,11 +353,52 @@ function Reviewgram() {
                 parent.find(".button-wrapper.common.write").css("display", "none");
                 parent.addClass("append");
             }
+            var stopRecognizing = function() {
+                parent.removeClass("recognizing");
+                parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
+                $(".btn-next-tab").removeAttr("disabled");
+                $(".btn.cancel").removeAttr("disabled");
+                parent.find(".button-wrapper.common").css("display", "inline-block");
+                if (me._recognizingPollTaskHandle != null) {
+                    clearTimeout(me._recognizingPollTaskHandle);
+                }
+            };
             if (parent.hasClass("in-process")) {
                 parent.removeClass("in-process");
                 parent.addClass("recognizing");
                 parent.find(".label").html("Производится<br/> распознавание");
                 me._recorder.stop();
+                var tryPollForResult = function() {
+                    makeRepeatedRequest({
+                        "url": "/reviewgram/recognizing_status/?id=" + me._recognizingPollId,
+                        "method": "GET",
+                        "cache" : false,
+                        "dataType": "json"
+                    }, function(o) {
+                        if (parent.hasClass("recognizing")) {
+                            if (o["status"] == "ok") {
+                                me._recognizingPollTaskHandle = null;
+                                stopRecognizing();
+                                var textItem = $("#" + parent.attr("data-for"));
+                                if (me._appendRecordResult) {
+                                    if (textItem.val().endsWith(" ")
+                                        || textItem.val().endsWith("\t")
+                                        || textItem.val().endsWith(".")
+                                        || textItem.val().endsWith(",")
+                                        || textItem.val().length == 0) {
+                                        textItem.val(textItem.val() + o["result"]);
+                                    } else {
+                                        textItem.val(textItem.val() + " " + o["result"]);
+                                    }
+                                } else {
+                                    textItem.val(o["result"]);
+                                }
+                            } else {
+                                me._recognizingPollTaskHandle = setTimeout(tryPollForResult, 3000);
+                            }
+                        }
+                    });
+                };
                 var waitForDataAndStartRecognizing = function() {
                     if (me._recordBlob == null) {
                         setTimeout(waitForDataAndStartRecognizing, 1000);
@@ -372,19 +417,19 @@ function Reviewgram() {
                             "contentType" : false,
                             "processData" : false
                         }, function(o) {
-                            // Write id here and start polling
-                        })
+                            if ((typeof o["id"] != "undefined") && (o["id"] != null)) {
+                                me._recognizingPollId =  o["id"];
+                                me._recognizingPollTaskHandle = setTimeout(tryPollForResult, 1000);
+                            } else {
+                                stopRecognizing();
+                            }
+                        });
                     }
                 }
                 waitForDataAndStartRecognizing();
             } else {
               if (parent.hasClass("recognizing")) {
-                  parent.removeClass("recognizing");
-                  parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
-                  $(".btn-next-tab").removeAttr("disabled");
-                  $(".btn.cancel").removeAttr("disabled");
-                  parent.find(".button-wrapper.common").css("display", "inline-block");
-                  // TODO: clear polling
+                  stopRecognizing();
               } else {
                   parent.addClass("in-process");
                   parent.find(".label").html("Идёт запись");
