@@ -536,7 +536,21 @@ def start_recognizing():
     
 @app.route('/reviewgram/recognizing_status/', methods=['GET'])
 def recognizing_status():
-    return jsonify({"status": "ok", "result": "status"})
+    id = request.values.get("id")
+    if (id is None):
+        return  jsonify({"status": "pending"})
+    else:
+        try:
+            id = int(id)
+            con = connect_to_db()
+            row = select_and_fetch_one(con, "SELECT `ID`, `RES` FROM `recognize_tasks` WHERE `ID` = %s AND `DATE_END` IS NOT NULL LIMIT 1", [id])
+            if (row is not None):
+                return  jsonify({"status": "ok", "result": row[1] })
+            else:
+                return  jsonify({"status": "pending"})
+        except Exception as e:
+            append_to_log("/reviewgram/recognizing_status: Exception " + traceback.format_exc())
+            return  jsonify({"status": "pending"})
  
 if __name__ == '__main__':
     gunicorn_logger = logging.getLogger("gunicorn.error")
