@@ -368,6 +368,10 @@ function Reviewgram() {
                 parent.addClass("recognizing");
                 parent.find(".label").html("Производится<br/> распознавание");
                 me._recorder.stop();
+                if (me._recordTimerTimeoutHandle != null) {
+                    clearTimeout(me._recordTimerTimeoutHandle);
+                    me._recordTimerTimeoutHandle = null;
+                }
                 var tryPollForResult = function() {
                     makeRepeatedRequest({
                         "url": "/reviewgram/recognizing_status/?id=" + me._recognizingPollId,
