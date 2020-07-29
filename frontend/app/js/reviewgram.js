@@ -561,6 +561,25 @@ function Reviewgram() {
             $(".autocompletion .body").html("");
         });
     };
+    this._initReplaceTableWidgets = function() {
+        $("body").on("click touchstart", ".rcell.delete .inner", function() {
+            $(this).closest(".rrow").remove();
+        });
+        $("body").on("click touchstart", ".rtable-add-row", function() {
+            var el = $(this).closest(".rtable-container").find(".rtable");
+            el.html(el.html() + "<div class=\"rrow\">"
+                              + "<div class=\"rcell-left\">"
+                              + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
+                              + "</div>"
+                              + "<div class=\"rcell-right\">"
+                              + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
+                              + "</div>"
+                              + "<div class=\"rcell delete\">"
+                              + "<div class=\"inner\">X</div>"
+                              + "</div>"
+                              + "</div>");
+        });
+    };
     // Получает предыдущие лексемы
     this._getPreviousTokens = function(langId, cursorPosition) {
         var result = [];
@@ -592,6 +611,7 @@ function Reviewgram() {
         this._initRangeSelect();
         this._initTabWidgets();
         this._initAutocompleteButtonHandlers();
+        this._initReplaceTableWidgets();
     };
     // Инициализация для работы с Webogram
     this.initWebogramAdapter = function(appMessagesManager, appPeersManager, mtpApiManager) {

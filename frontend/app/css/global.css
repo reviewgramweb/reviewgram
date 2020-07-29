@@ -407,3 +407,48 @@
 .autocompletion .body .btn.btn-md {
     margin-right: 2px;
 }
+
+.rtable {
+    display: table;
+}
+
+.rrow {
+    display: table-row;
+}
+
+.rcell, .rcell-left, .rcell-right {
+    display: table-cell;
+    width: 30%;
+    padding-right: 5px;
+    padding-bottom: 5px;
+}
+
+.rcell.delete .inner {
+    background-color: rgb(73,194,134);
+    color: #ffffff;
+    text-align: center;
+    font-weight: bold;
+    margin-left: 5px;
+    margin-right: 5px;
+    width: 100%;
+    line-height: 46px;
+    cursor: pointer;
+    position: relative;
+    top: -2px;
+}
+
+.rtable-add-row {
+    background-color: rgb(73,194,134);
+    color: #ffffff;
+    font-size: 18px;
+    text-align: center;
+    font-weight: bold;
+    margin-top: 5px;
+    cursor: pointer;
+    line-height: 46px;
+}
+
+
+.rtable .header {
+    font-size: 9px;
+}
