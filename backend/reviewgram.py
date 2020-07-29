@@ -340,15 +340,15 @@ def get_repo_settings():
     if (is_user_in_chat(uuid, chatId)):
         con = connect_to_db()
         with con:
-            row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
+            row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID, ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
             if (row is not None):
                 password = ""
                 if (len(row[4]) > 0):
                     c = AESCipher()
                     password = c.decrypt(row[4])
-                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5] })
+                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5], "id": row[6] })
             else:
-                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1})
+                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1, "id": 0})
     else:
         abort(404)
 
