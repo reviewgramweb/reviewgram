@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en" manifest="webogram.appcache" ng-csp="" xmlns:ng="http://angularjs.org" id="ng-app">
+<head>
+  <!--[if lte IE 9]>
+  <meta HTTP-EQUIV="REFRESH" content="0; url=badbrowser.html">
+  <![endif]-->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Помощь по голосовому вводу</title>
+
+  <!-- build:css css/app.css -->
+  <link rel="stylesheet" href="vendor/angular/angular-csp.css"/>
+  <link rel="stylesheet" href="vendor/bootstrap/css/bootstrap.css"/>
+  <link rel="stylesheet" href="vendor/angularjs-toaster/toaster.css"/>
+  <link rel="stylesheet" href="css/app.css"/>
+  <link rel="stylesheet" href="css/global.css"/>
+  <link rel="stylesheet" href="css/desktop.css"/>
+  <style>
+    .tg_head_peer_title {
+        max-width: 2000px;
+    }
+    p {
+        max-width: 100%;
+    }
+    .tg_head_split {
+        max-width: 2000px;
+        min-width: 630px;
+        width: 100%;
+    }
+    .im_page_wrap {
+        padding-left: 10px;
+        padding-right: 10px;
+        min-width: 630px;
+    }
+    td {
+        padding: 5px;
+        border: 1px solid black;
+    }
+    body {
+        overflow-y: scroll;
+        overflow-x: scroll;
+    }
+  </style>
+  <!-- endbuild -->
+
+  <link rel="manifest" href="manifest.webapp.json"/>
+
+  <!-- <link rel="stylesheet" href="css/font.css"/> -->
+  <!-- <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600&amp;subset=cyrillic,cyrillic-ext,latin,latin-ext" rel="stylesheet" type="text/css"> -->
+
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+
+  <link rel="apple-touch-icon" href="img/iphone_home120.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="img/iphone_home120.png">
+
+  <meta name="apple-mobile-web-app-title" content="Reviewgram Web">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#49aa95">
+  <meta name="google" content="notranslate">
+
+  <meta property="og:title" content="Помощь по вводу голосом">
+  <meta property="og:url" content="http://reviewgram.ax.lt/dictationhelp.html">
+  <meta property="og:image" content="http://reviewgram.ax.lt/img/logo_share.png">
+  <meta property="og:site_name" content="Reviewgram">
+  <meta property="og:description" content=">Помощь по голосовому вводу">
+
+</head>
+<body>
+    <div class="page_wrap">
+        <div class="tg_head_split">
+            <div class="tg_head_main_wrap" ng-switch="offline">
+              <div ng-switch-default="" ng-if="!!historyPeer.id" class="tg_head_main_peer_wrap ng-scope" style="">
+
+                <div class="tg_head_peer_title_wrap" ng-switch="historyFilter.mediaType">
+                  <a class="tg_head_btn ng-scope" ng-switch-default="">
+                    <div class="tg_head_peer_info">
+                      <span class="tg_head_peer_title" my-peer-link="historyPeer.id" peer-watch="true" dir="auto">Помощь по вводу голосом</span>
+                    </div>
+                  </a>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        <div class="im_page_wrap">
+            <h1>Общие рекомендации</h1>
+            <p>Старайтесь произносить слова чётко и отчётливо, без ошибок. Используйте паузы не менее трети секунды между словами, чтобы улучшить качество распознавания. Так как Reviewgram использует распознавание слов на английском языке, потренируйте свой акцент, чтобы улучшить качество распознавания. Можно использовать Google Translate как пример распознавания.</p>
+
+            <h2>Таблицы замены</h2>
+            <p>В настройках репозиториев существует возможность задать таблицы замены, которые позволяют исправлять локальные ошибки рапознавания.
+            Если вы замечаете, что распознавание ошибок сликом часто ошибается, используйте данные таблицы, чтобы заменить одно слово на другое в процессе распознавания.
+            Данные таблицы применяются до этапа замены слов в рамках распознавания языка программирования, при этом сравнение является нечётким (слова должны быть похожи на 70%, чтобы быть заменены), поэтому стоит быть осторожным при использовании данных таблиц.</p>
+
+            <h2>Таблицы замены для языка Python</h2>
+            <p>Для языка Python определённые свои таблицы, которые позволяют упростить ввод определённых модулей, символов и данных. При этом реализована автозамена похожих идентификаторов, из исходного кода при вводе.</p>
+
+            <h3>Ключевые слова для замены</h3>
+            <table>
+                <tr><td>Оригинальная лексема</td><td>Синонимы</td></tr>
+                <tr><td>False</td><td>false</td><td>pause</td></tr>
+                <tr><td>await</td><td>the way</td><td>wait out</td></tr>
+                <tr><td>else</td><td>elsa</td></tr>
+                <tr><td>import</td><td>input</td><td>importance</td></tr>
+                <tr><td>None</td><td>none</td><td>known</td></tr>
+                <tr><td>break</td><td>Break</td></tr>
+                <tr><td>break</td><td>drake</td></tr>
+                <tr><td>except</td><td>upset</td></tr>
+                <tr><td>in</td><td>in keyword</td><td>in keywords</td><td>in key word</td><td>in key west</td></tr>
+                <tr><td>raise</td><td>rise</td></tr>
+                <tr><td>True</td><td>through</td><td>true</td><td>future</td></tr>
+                <tr><td>return</td><td>returned</td></tr>
+                <tr><td>and</td><td>and keyword</td><td>and keywords</td><td>and keyboard</td><td>and key west</td></tr>
+                <tr><td>for</td><td>4keyword</td><td>4keywords</td><td>for keyword</td><td>for keywords</td><td>for key west</td></tr>
+                <tr><td>lambda</td><td>lomza</td><td>lambda</td></tr>
+                <tr><td>try</td><td>troy</td></tr>
+                <tr><td>as</td><td>ave</td><td>ass</td><td>OS</td><td>a s</td></tr>
+                <tr><td>def</td><td>death</td><td>define</td><td>definition</td></tr>
+                <tr><td>from</td><td>From</td></tr>
+                <tr><td>nonlocal</td><td>non-local</td><td>9 local</td><td>9 logo</td></tr>
+                <tr><td>while</td><td>I'll</td><td>wow</td></tr>
+                <tr><td>assert</td><td>assault</td></tr>
+                <tr><td>del</td><td>jail</td><td>zelle</td><td>jealous</td></tr>
+                <tr><td>global</td><td>Global</td></tr>
+                <tr><td>not</td><td>Not</td></tr>
+                <tr><td>with</td><td>width</td></tr>
+                <tr><td>elif</td><td>else if</td></tr>
+                <tr><td>if</td><td>i f</td></tr>
+                <tr><td>or</td><td>or keyword</td></tr>
+                <tr><td>yield</td><td>Yield</td></tr>
+            </table>
+
+            <h3>Общие лексемы</h3>
+            <table>
+                <tr><td>Оригинальная лексема</td><td>Синонимы</td></tr>
+                <tr><td>/</td><td>slash</td></tr>
+                <tr><td>\</td><td>backslash</td></tr>
+                <tr><td>&quot;</td><td>quote</td><td>gold</td><td>court</td></tr>
+                <tr><td>'</td><td>single quote</td><td>single quotes</td><td>single proton</td></tr>
+                <tr><td>#</td><td>hash</td></tr>
+                <tr><td>[</td><td>left square bracket</td></tr>
+                <tr><td>]</td><td>right square bracket</td></tr>
+                <tr><td>{</td><td>left brace</td><td>left brain</td></tr>
+                <tr><td>}</td><td>right brace</td><td>right brain</td></tr>
+                <tr><td>;</td><td>semicolon</td><td>jamie cullumm</td></tr>
+                <tr><td>:</td><td>colon</td><td>call him</td></tr>
+                <tr><td>.</td><td>dot</td></tr>
+                <tr><td>,</td><td>comma</td></tr>
+                <tr><td>+</td><td>plus</td></tr>
+                <tr><td>-</td><td>minus</td></tr>
+                <tr><td>*</td><td>multiply</td></tr>
+                <tr><td>*</td><td>X</td></tr>
+                <tr><td>^</td><td>caret</td><td>carrots</td><td>carry</td><td>carried</td></tr>
+                <tr><td>%</td><td>modulus</td><td>modules</td><td>model is</td></tr>
+                <tr><td>**</td><td>exponentiation</td></tr>
+                <tr><td>//</td><td>floor division</td><td>for our division</td></tr>
+                <tr><td>@</td><td>at sign</td></tr>
+                <tr><td>&lt;&lt;</td><td>shift left</td><td>just left</td></tr>
+                <tr><td>&gt;&gt;</td><td>shift right</td><td>shift right</td></tr>
+                <tr><td>&</td><td>bitwise and</td><td>beach wise and</td><td>bitwise end</td><td>beach wise end</td><td>wyzant</td></tr>
+                <tr><td>|</td><td>vertical bar</td><td>horizontal wave</td><td>where is on the wave</td></tr>
+                <tr><td>:=</td><td>colon assign</td><td>all of the sign</td><td>: assign</td><td>: inside</td></tr>
+                <tr><td>&gt;</td><td>greater</td></tr>
+                <tr><td>&lt;</td><td>lesser</td></tr>
+                <tr><td>&lt;=</td><td>lesser or equal</td><td>less or equal</td></tr>
+                <tr><td>&gt;=</td><td>greater or equal</td></tr>
+                <tr><td>==</td><td>equal</td></tr>
+                <tr><td>!=</td><td>not equal</td></tr>
+                <tr><td>(</td><td>opening round bracket</td><td>opening round brackets</td></tr>
+                <tr><td>)</td><td>closing round bracket</td><td>closing round brackets</td></tr>
+                <tr><td>-&gt;</td><td>arrow</td></tr>
+                <tr><td>+=</td><td>plus equal</td></tr>
+                <tr><td>-=</td><td>minus equal</td></tr>
+                <tr><td>*=</td><td>multiply equal</td></tr>
+                <tr><td>*=</td><td>X equal</td></tr>
+                <tr><td>/=</td><td>divide equal</td><td>divided equal</td><td>division equal</td></tr>
+                <tr><td>//=</td><td>double slash equal</td><td>double/equal</td><td>cc equal</td></tr>
+                <tr><td>**=</td><td>double star equal</td><td>devil star evil</td><td>devil star equal</td></tr>
+                <tr><td>&amp;=</td><td>and equal</td><td>an equal</td></tr>
+                <tr><td>|=</td><td>or equal</td><td>glory</td></tr>
+                <tr><td>%=</td><td>percent sign equal</td><td>% evil</td></tr>
+                <tr><td>@=</td><td>at sign equal</td><td>@equal</td><td>that sign equal</td><td>at signing for</td></tr>
+                <tr><td>&gt;&gt;=</td><td>shift right equal</td><td>just right equal</td><td>shift right evil</td><td>just right evil</td></tr>
+                <tr><td>&lt;&lt;=</td><td>shift left equal</td><td>just left equal</td><td>shift left evil</td><td>just left evil</td></tr>
+                <tr><td>^=</td><td>exclusive or equal</td><td>exclusive voorheesville</td></tr>
+                <tr><td>$</td><td>dollar sign</td></tr>
+                <tr><td>?</td><td>question mark</td></tr>
+                <tr><td>`</td><td>grave accent</td><td>gravis</td><td>graphics and</td></tr>
+                <tr><td>0</td><td>zero</td></tr>
+                <tr><td>1</td><td>one</td></tr>
+                <tr><td>2</td><td>two</td></tr>
+                <tr><td>3</td><td>three</td></tr>
+                <tr><td>4</td><td>four</td></tr>
+                <tr><td>5</td><td>five</td></tr>
+                <tr><td>6</td><td>six</td></tr>
+                <tr><td>7</td><td>seven</td></tr>
+                <tr><td>8</td><td>eight</td></tr>
+                <tr><td>9</td><td>nine</td></tr>
+                <tr><td>_</td><td>underscore</td></tr>
+                <tr><td>\t</td><td>tab</td><td>temp</td><td>tabs</td></tr>
+                <tr><td> </td><td>space</td><td>bass</td></tr>
+                <tr><td>master</td><td>Master</td></tr>
+                <tr><td>slave</td><td>Slave</td></tr>
+                <tr><td>frontend</td><td>front-end</td></tr>
+                <tr><td>backend</td><td>back-end</td></tr>
+            </table>
+
+            <h3>Модули (заменяются только после import или from)</h3>
+            <table>
+                <tr><td>shutil</td><td>shell utilities</td></tr>
+                <tr><td>shutil</td><td>show me Chili's</td></tr>
+                <tr><td>unittest</td><td>unit test</td></tr>
+                <tr><td>subprocess</td><td>subtract mixed</td></tr>
+                <tr><td>fractions</td><td>Fractions</td></tr>
+                <tr><td>cmath</td><td>sea math</td><td>sea mess</td><td>CMOS</td><td>ST Math</td></tr>
+                <tr><td>glob</td><td>global find</td><td>global fight</td><td>global fine</td><td>global fine</td></tr>
+                <tr><td>copy</td><td>Copy</td></tr>
+                <tr><td>functions</td><td>function</td></tr>
+                <tr><td>os</td><td>operation system</td><td>horse</td></tr>
+                <tr><td>os.path</td><td>operation system path</td><td>operation system bass</td><td>horse path</td><td>horse bass</td></tr>
+                <tr><td>json</td><td>Json</td></tr>
+                <tr><td>calendar</td><td>Calendar</td></tr>
+                <tr><td>pickle</td><td>Pickle</td></tr>
+                <tr><td>datetime</td><td>date-time</td><td>daytime</td></tr>
+                <tr><td>bisect</td><td>Bisect</td></tr>
+                <tr><td>collections</td><td>Collections</td></tr>
+                <tr><td>array</td><td>are</td><td>every</td></tr>
+                <tr><td>itertools</td><td>iteration tools</td></tr>
+                <tr><td>time</td><td>Time</td></tr>
+                <tr><td>sys</td><td>system</td><td>seas</td></tr>
+                <tr><td>random</td><td>ran and</td></tr>
+                <tr><td>math</td><td>mess</td></tr>
+                <tr><td>atexit</td><td>at exit</td></tr>
+                <tr><td>gc</td><td>garbage collection</td></tr>
+                <tr><td>inspect</td><td>Inspect</td></tr>
+                <tr><td>marshal</td><td>marshall</td></tr>
+                <tr><td>traceback</td><td>trace back</td><td>chase back</td></tr>
+                <tr><td>types</td><td>tight</td></tr>
+                <tr><td>warnings</td><td>warninks</td></tr>
+                <tr><td>weakref</td><td>weak references</td><td>week references</td></tr>
+                <tr><td>future_builtins</td><td>future built-ins</td><td>future buildings</td></tr>
+                <tr><td>pdb</td><td>program debug</td><td>randy bug</td></tr>
+                <tr><td>doctest</td><td>documentation test</td><td>documentation text</td></tr>
+                <tr><td>decimal</td><td>Decimal</td></tr>
+                <tr><td>numbers</td><td>Numbers</td></tr>
+                <tr><td>abc</td><td>a b c</td></tr>
+                <tr><td>abc</td><td>ABC</td></tr>
+                <tr><td>contextlib</td><td>context library</td></tr>
+                <tr><td>functools</td><td>functional tools</td></tr>
+                <tr><td>heapq</td><td>heap queue</td><td>heap fewer</td><td>hip queue</td><td>heap queue</td></tr>
+                <tr><td>heapq</td><td>EQ</td></tr>
+                <tr><td>operator</td><td>Operator</td></tr>
+                <tr><td>codecs</td><td>codex</td></tr>
+                <tr><td>re</td><td>regular expression</td></tr>
+                <tr><td>string</td><td>String</td></tr>
+                <tr><td>struct</td><td>structure</td></tr>
+                <tr><td>unicodedata</td><td>unicode data</td><td>unico data</td></tr>
+                <tr><td>sqlite3</td><td>sqlite three</td></tr>
+                <tr><td>shelve</td><td>shelf</td></tr>
+                <tr><td>bz2</td><td>b z two</td><td>b z 2</td><td>be set to</td><td>busy too</td><td>busy to</td></tr>
+                <tr><td>filecmp</td><td>file compare</td></tr>
+                <tr><td>fnmatch</td><td>function match</td></tr>
+                <tr><td>gzip</td><td>g zip</td></tr>
+                <tr><td>tarfile</td><td>tar file</td><td>tar files</td></tr>
+                <tr><td>tempfile</td><td>temp file</td><td>temp files</td></tr>
+                <tr><td>zipfile</td><td>zip file</td><td>zip files</td></tr>
+                <tr><td>zlib</td><td>z lib</td><td>that sleep</td><td>z sleep</td><td>zeeland</td></tr>
+                <tr><td>commands</td><td>Commands</td></tr>
+                <tr><td>configparser</td><td>configuration parser</td></tr>
+                <tr><td>errno</td><td>error number</td><td>your number</td></tr>
+                <tr><td>fcntl</td><td>file control</td><td>while control</td></tr>
+                <tr><td>io</td><td>i o</td></tr>
+                <tr><td>logging</td><td>Logging</td></tr>
+                <tr><td>mmap</td><td>memory mapping</td><td>memory metal</td><td>memory match</td></tr>
+                <tr><td>msvcrt</td><td>microsoft runtime</td></tr>
+                <tr><td>optparse</td><td>option parse</td><td>option pass</td><td>austin carr</td></tr>
+                <tr><td>signal</td><td>Signal</td></tr>
+                <tr><td>winreg</td><td>windows registry</td></tr>
+                <tr><td>multiprocessing</td><td>multi-processing</td></tr>
+                <tr><td>threading</td><td>trade inc</td><td>threaten</td><td>shredding</td></tr>
+                <tr><td>queue</td><td>Queue</td></tr>
+                <tr><td>asynchat</td><td>asynchronous chat</td><td>asynchronous shirt</td></tr>
+                <tr><td>asyncore</td><td>asynchronous core</td><td>a synchronous or</td><td>asynchronous score</td><td>asynchronous corey</td><td>asynchronous query</td></tr>
+                <tr><td>select</td><td>Select</td></tr>
+                <tr><td>socket</td><td>sockets</td></tr>
+                <tr><td>ssl</td><td>secure socket layer</td><td>secure sockets layer</td></tr>
+                <tr><td>SocketServer</td><td>socket server</td></tr>
+                <tr><td>ftplib</td><td>ftp library</td><td>icp library</td><td>lcp library</td></tr>
+                <tr><td>http</td><td>HTTP</td></tr>
+                <tr><td>smtplib</td><td>smtp library</td><td>smpp library</td></tr>
+                <tr><td>urllib</td><td>url library</td><td>you are a library</td></tr>
+                <tr><td>xmlrpc</td><td>xml remote procedure calls</td><td>xml remote procedure call</td></tr>
+                <tr><td>cgi</td><td>c g i</td><td>c o g i</td><td>c v i</td><td>c d i</td></tr>
+                <tr><td>cgitb</td><td>cgi t b</td><td>cgi tv</td><td>c g i t b</td><td>c t i t b</td><td>c c i t</td></tr>
+                <tr><td>wsgiref</td><td>wsgi reference</td><td>w s g i reference</td><td>w s g reference</td></tr>
+                <tr><td>flask</td><td>flesk</td></tr>
+                <tr><td>django</td><td>jungle</td><td>junker</td></tr>
+                <tr><td>django</td><td>Django</td></tr>
+                <tr><td>gunicorn</td><td>g unicorn</td><td>the unicorn</td></tr>
+                <tr><td>base64</td><td>day 64</td></tr>
+                <tr><td>binascii</td><td>bin aski</td><td>bin ascii</td><td>SQ</td><td>benassi</td></tr>
+                <tr><td>csv</td><td>c s v</td><td>c s we</td><td>cs we</td></tr>
+                <tr><td>email</td><td>mary</td></tr>
+                <tr><td>hashlib</td><td>crash library</td><td>hash library</td><td>crash sleep</td><td>hash sleep</td><td>has library</td></tr>
+                <tr><td>hmac</td><td>h mac</td><td>h mark</td><td>smack</td><td>it smack</td><td>h maggie</td></tr>
+                <tr><td>HTMLParser</td><td>html parser</td></tr>
+                <tr><td>mimetypes</td><td>mime types</td><td>mineplex</td><td>minds heights</td><td>mind heights</td></tr>
+                <tr><td>quopri</td><td>q prime</td><td>quo prime</td><td>core prime</td><td>coupon</td></tr>
+                <tr><td>xml</td><td>accident</td><td>flexinail</td></tr>
+                <tr><td>ctypes</td><td>sea types</td><td>c types</td><td>seaside</td><td>c-type</td><td>seat height</td></tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
