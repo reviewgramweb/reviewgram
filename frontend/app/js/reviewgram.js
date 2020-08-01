@@ -248,7 +248,7 @@ function Reviewgram() {
     // @var {String} ID чата
     // @var {Function}  onSuccess функция, которой передастся JSON-объект настроек после получения
     // @var {Function}  on404 функция которая дёрнется при 404
-    this._getRepoSettings = function(chatId, onSuccess, on404)  {
+    this._getRepoSettings = function(chatId, onSuccess, on404, getTables)  {
         var me = this;
         this.__fetchOrCreateUUID(function(isNew, uuid, timestamp) {
             var wrapper = (function(fun) {
@@ -256,13 +256,17 @@ function Reviewgram() {
                     o.password = atob(o.password);
                     fun(o);
                 };
+                var params = {
+                    "chatId" : reviewgram.requestPeerID(chatId),
+                    "uuid": uuid,
+                };
+                if (typeof getTables != "undefined") {
+                    params["withTable"] = "Y";
+                }
                 makeRepeatedRequest({
                     "url": "/reviewgram/get_repo_settings/",
                     "dataType": "json",
-                    "data": {
-                        "chatId" : reviewgram.requestPeerID(chatId),
-                        "uuid": uuid,
-                    },
+                    "data": params,
                     "method": "GET",
                     "on404" : on404
                 }, wrapInner);
@@ -283,23 +287,26 @@ function Reviewgram() {
     // @var {String} repoSameName Иия репозитория
     // @var {String} user пользоватль для доступа
     // @var {int}    langId id языка
+    // @var {String[][]} пары таблиц для замены синтаксиса
     // @var {Function} on404 функция для вызова при 404
-    this._setRepoSettings = function(chatId, onSuccess, repoUserName, repoSameName, user, password, langId, on404)  {
+    this._setRepoSettings = function(chatId, onSuccess, repoUserName, repoSameName, user, password, langId, table, on404)  {
         var me = this;
         this.__fetchOrCreateUUID(function(isNew, uuid, timestamp) {
             var wrapper = (function(fun) {
                 makeRepeatedRequest({
                     "url": "/reviewgram/set_repo_settings/",
                     "dataType": "json",
-                    "data": {
+                    'contentType': 'application/json',
+                    "data": JSON.stringify({
                         "chatId" : reviewgram.requestPeerID(chatId),
                         "uuid": uuid,
                         "repoUserName": repoUserName,
                         "repoSameName": repoSameName,
                         "user": user,
                         "password": btoa(password),
-                        "langId": langId
-                    },
+                        "langId": langId,
+                        "table": table
+                    }),
                     "method": "POST",
                     "on404": on404
                 }, fun);
@@ -397,6 +404,7 @@ function Reviewgram() {
                                 } else {
                                     textItem.val(o["result"]);
                                 }
+                                textItem.trigger("keyup");
                             } else {
                                 me._recognizingPollTaskHandle = setTimeout(tryPollForResult, 3000);
                             }
@@ -413,6 +421,7 @@ function Reviewgram() {
                             formData.append("langId", me._editedFile.langId);
                             formData.append("content", me._getResultFileContent());
                         }
+                        formData.append("repoId", me._repoSettings.id);
                         formData.append("pad", 1);
                         makeRepeatedRequest({
                             "url": "/reviewgram/start_recognizing/",
@@ -567,17 +576,17 @@ function Reviewgram() {
         });
         $("body").on("click touchstart", ".rtable-add-row", function() {
             var el = $(this).closest(".rtable-container").find(".rtable");
-            el.html(el.html() + "<div class=\"rrow\">"
-                              + "<div class=\"rcell-left\">"
-                              + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
-                              + "</div>"
-                              + "<div class=\"rcell-right\">"
-                              + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
-                              + "</div>"
-                              + "<div class=\"rcell delete\">"
-                              + "<div class=\"inner\">X</div>"
-                              + "</div>"
-                              + "</div>");
+            el.append("<div class=\"rrow\">"
+                      + "<div class=\"rcell-left\">"
+                      + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
+                      + "</div>"
+                      + "<div class=\"rcell-right\">"
+                      + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
+                      + "</div>"
+                      + "<div class=\"rcell delete\">"
+                      + "<div class=\"inner\">X</div>"
+                      + "</div>"
+                      + "</div>");
         });
     };
     // Получает предыдущие лексемы
@@ -772,13 +781,45 @@ function Reviewgram() {
             }
             $("#langId ul").html(result);
             $("#langId ul li[data-id=" + langId + "]").addClass("selected");
+            var list = o.table;
+            var current = 0;
+            var tbl = $(".rtable-container").find(".rtable");
+            tbl.html("");
+            var append_row = function() {
+                tbl.append("<div class=\"rrow\">"
+                          + "<div class=\"rcell-left\">"
+                          + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
+                          + "</div>"
+                          + "<div class=\"rcell-right\">"
+                          + "<input class=\"form-control input-lg rcelltext\" type=\"text\">"
+                          + "</div>"
+                          + "<div class=\"rcell delete\">"
+                          + "<div class=\"inner\">X</div>"
+                          + "</div>"
+                          + "</div>");
+            };
+            for (var i = 0; i < 3; ++i) {
+                append_row();
+                if (current < o.table.length) {
+                    var row = tbl.find(".rrow:last");
+                    row.find(".rcell-left").find("input").val(list[current][0]);
+                    row.find(".rcell-right").find("input").val(list[current][1]);
+                }
+                ++current;
+            }
+            for (;current < o.table.length; ++current) {
+                append_row();
+                var row = tbl.find(".rrow:last");
+                row.find(".rcell-left").find("input").val(list[current][0]);
+                row.find(".rcell-right").find("input").val(list[current][1]);
+            }
         }, function() {
             $("#rsettings_preloader").css('display', 'none');
             $("#rsettings_form").css('display', 'none');
             $("#rsettings_error").css('display', 'block');
             $("#rsettings_error").find(".reviewgram-error").html("Не удалось получить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат, и что вы являетесь членом чата и попробуйте ещё раз.");
             $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
-        });
+        }, true);
     };
     // Показывает модалку для коммита
     this.showMakeCommitModal = function() {
@@ -834,6 +875,23 @@ function Reviewgram() {
             } else {
                 errors.push("Не указан язык");
             }
+            var tbl = $(".rtable-container").find(".rtable").find(".rrow");
+            var table = [];
+            for (var i = 0; i < tbl.length; ++i) {
+                var left = $(tbl[i]).find(".rcell-left").find("input").val().trim();
+                var right = $(tbl[i]).find(".rcell-right").find("input").val().trim();
+                if (left.length == 0) {
+                    if (right.length != 0) {
+                        errors.push("В строке " + (i + 1) + " не указана лексема на замену");
+                    }
+                } else {
+                    if (right.length != 0) {
+                        table.push([left, right]);
+                    } else {
+                        errors.push("В строке " + (i + 1) + " не указана заменяемая лексема");
+                    }
+                }
+            }
             if (errors.length != 0) {
                 $("#error").css("display", "block").html(errors.join("<br />"));
             } else {
@@ -856,7 +914,7 @@ function Reviewgram() {
                       $("#rsettings_error").find(".reviewgram-error").html("Не удалось сохранить настройки репозитория. Проверьте, что вы добавили пользователя <a href=\"https://t.me/reviewgram_bot\">reviewgram_bot</a> в чат и попробуйте ещё раз.");
                       $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                 };
-                me._setRepoSettings(me.getCurrentDialog(), fun, repoUserName, repoSameName, user, password, langId, on404);
+                me._setRepoSettings(me.getCurrentDialog(), fun, repoUserName, repoSameName, user, password, langId, table, on404);
             }
         }
     };

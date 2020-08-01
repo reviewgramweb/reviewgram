@@ -282,6 +282,43 @@ def is_user_in_chat(uuid, chatId):
         append_to_log("/reviewgram/register_chat_id_for_token/: Exception " + traceback.format_exc())
         return False
 
+# Валидация таблицы замен при сохранении
+def validate_replace_table(table):
+    i = 1
+    for row in table:
+        common_error =  "В таблице замен обнаружена некорректная строка №" + str(i)
+        if (not isinstance(row, list)):
+            return common_error
+        if (len(row) != 2):
+            return common_error
+        if ((not isinstance(row[0], str)) or (not isinstance(row[1], str))):
+            return common_error
+        row0 = row[0].strip()
+        row1 = row[1].strip()
+        if ((len(row0) == 0) and (len(row1) != 0)):
+            return "В таблице замене в строке №" + str(i) + " не заполнена исходная строка"
+        if ((len(row0) != 0) and (len(row1) == 0)):
+            return "В таблице замене в строке №" + str(i) + " не заполнена строка для заменв"
+        ++i
+    return ""
+
+# Обновление таблицы замен при сохранении
+def update_replace_table(con, repoId, table):
+    source_rows =  select_and_fetch_all(con, "SELECT ID FROM `replace_tables` WHERE `REPO_ID` = %s ORDER BY `ID` ASC" ,[repoId])
+    source_rows = [row[0] for row in source_rows]
+    table = list(map(lambda x: [x[0].strip(), x[1].strip()], table))
+    table = list(filter(lambda x: ((len(x[0]) != 0) and (len(x[1]) != 0)), table))
+    for row in table:
+        if (len(source_rows) != 0):
+            id = source_rows[0]
+            source_rows.pop(0)
+            execute_update(con, "UPDATE  `replace_tables` SET `FROM_TEXT` = %s, TO_TEXT=  %s WHERE `ID` = %s", [row[0], row[1], id])
+        else:
+            execute_update(con, "INSERT INTO `replace_tables`(`FROM_TEXT`, `TO_TEXT`, `REPO_ID`) VALUES (%s,%s,%s)", [row[0], row[1], repoId]) 
+    if (len(source_rows) != 0):
+         source_rows = [str(row) for row in source_rows]
+         execute_update(con, "DELETE FROM  `replace_tables` WHERE `ID` IN (" + ",".join(source_rows) + ")", [])
+         
 @app.route('/')
 def index():
     return 'OK'
@@ -341,29 +378,35 @@ def get_repo_settings():
         con = connect_to_db()
         with con:
             row = select_and_fetch_one(con, "SELECT REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID, ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
+            table = []
             if (row is not None):
-                password = ""
+                id = row[6]
+                withTable = request.values.get("withTable")
+                if (withTable is not None):
+                    rows = select_and_fetch_all(con, "SELECT FROM_TEXT, TO_TEXT FROM `replace_tables` WHERE `REPO_ID` = %s ORDER BY `ID` ASC" ,[id])
+                    for localRow in rows:
+                        table.append([localRow[0], localRow[1]])
                 if (len(row[4]) > 0):
                     c = AESCipher()
                     password = c.decrypt(row[4])
-                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5], "id": row[6] })
+                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5], "id": row[6], "table": table })
             else:
-                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1, "id": 0})
+                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1, "id": 0, "table": []})
     else:
         abort(404)
 
-
 @app.route('/reviewgram/set_repo_settings/', methods=['POST'])
 def set_repo_settings():
-    chatId = request.values.get("chatId")
-    uuid = request.values.get("uuid")
-    repoUserName = request.values.get("repoUserName")
-    repoSameName = request.values.get("repoSameName")
-    user = request.values.get("user")
-    password = request.values.get("password")
-    langId = request.values.get("langId")
-    if (is_user_in_chat(uuid, chatId)):
-
+    json = request.json
+    chatId = safe_get_key(json, ["chatId"])
+    uuid = safe_get_key(json, ["uuid"])
+    repoUserName = safe_get_key(json, ["repoUserName"])
+    repoSameName = safe_get_key(json, ["repoSameName"])
+    user = safe_get_key(json, ["user"])
+    password = safe_get_key(json, ["password"])
+    langId = safe_get_key(json, ["langId"])
+    table = safe_get_key(json, ["table"])
+    if (is_user_in_chat(uuid, chatId)):        
         if (repoUserName is None):
             return jsonify({"error": "Не указано имя собственника репозитория"})
         else:
@@ -395,6 +438,15 @@ def set_repo_settings():
             except Exception as e:
                 return jsonify({"error": "Не указан пароль"})
         
+        if (table is None):
+            return jsonify({"error": "Не указана таблица записей"})
+        if (not isinstance(table, list)):
+            return jsonify({"error": "Не указана таблица записей"})
+        error = validate_replace_table(table)
+        if (len(error) != 0):
+            return jsonify({"error": error})
+
+        
         con = connect_to_db()
         if (langId is None):
             return jsonify({"error": "Не указан ID языка"})
@@ -410,11 +462,14 @@ def set_repo_settings():
         c = AESCipher()
         password = c.encrypt(password)
         with con:
-            row = select_and_fetch_one(con, "SELECT * FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
+            row = select_and_fetch_one(con, "SELECT ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
+            id = 0
             if (row is not None):
+                id = row[0]
                 execute_update(con, "UPDATE `repository_settings` SET REPO_SITE = %s, REPO_USER_NAME = %s, REPO_SAME_NAME = %s, USER = %s, PASSWORD = %s, LANG_ID = %s WHERE CHAT_ID = %s", ['github.com', repoUserName, repoSameName, user, password, langId, chatId])
             else:
-                execute_update(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID) VALUES (%s, %s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password, langId])
+                id = execute_insert(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID) VALUES (%s, %s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password, langId])
+            update_replace_table(con, id, table)
             return jsonify({"error": ""})
     else:
         abort(404)
@@ -510,6 +565,12 @@ def start_recognizing():
     langId = request.form.get("langId")
     content = request.form.get("content")
     record = request.files.get("record")
+    repoId = request.form.get("repoId")
+    if (repoId is not None):
+        try:
+            repoId = int(repoId)
+        except Exception as e:
+            append_to_log("/reviewgram/start_recognizing: broken repo id")
     if (content is None):
         content = ""
     if (request.form.get("langId") is not None):
@@ -527,7 +588,7 @@ def start_recognizing():
     con = connect_to_db()
     if (langId is None):
         langId = 0
-    rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID, CONTENT) VALUES (%s, %s, %s)", [fileName, langId, content])
+    rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID, CONTENT, REPO_ID) VALUES (%s, %s, %s, %s)", [fileName, langId, content, repoId])
     return jsonify({"id": rowId})
     
 @app.route('/reviewgram/recognizing_status/', methods=['GET'])

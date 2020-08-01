@@ -31,7 +31,7 @@ def ogg2wav_convert(old, new):
     result = subprocess.run(['ffmpeg', "-hide_banner", "-loglevel", "panic", "-y", "-i", old, new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return result.stderr.decode("UTF-8")
     
-def try_recognize(fileName):
+def try_recognize(fileName, table):
     encoding = enums.RecognitionConfig.AudioEncoding.LINEAR16
     sample_rate_hertz = 48000
     language_code = 'en-US'
@@ -60,7 +60,8 @@ def select_and_perform_task():
               "   r.RES," \
               "   r.LANG_ID," \
               "   r.LOG," \
-              "   r.CONTENT"  \
+              "   r.CONTENT,"  \
+              "   r.REPO_ID " \
               " FROM " \
               "`recognize_tasks` AS r  " \
               " WHERE  " \
@@ -70,6 +71,14 @@ def select_and_perform_task():
         if (row is not None):
             id = row[0]
             fileName = row[1]
+            if (row[6] is not None):
+                repoId = int(row[6])
+            else:
+                repoId = 0
+            table = []
+            rows = reviewgramdb.select_and_fetch_all(con, "SELECT FROM_TEXT, TO_TEXT FROM `replace_tables` WHERE `REPO_ID` = %s ORDER BY `ID` ASC" ,[repoId])
+            for localRow in rows:
+                table.append([localRow[0], localRow[1]])
             langId = 0
             if (row[3] is not None):
                 langId = int(row[3])
@@ -88,7 +97,7 @@ def select_and_perform_task():
                     else:
                         reviewgramdb.execute_update(con, "UPDATE `recognize_tasks` SET `RES` = %s, `LOG` = %s  WHERE `ID` = %s", ['', 'Processed ogg 2 wav', id])
                         print("Recognizing...")
-                        result = try_recognize(newFileName)
+                        result = try_recognize(newFileName, table)
                         reviewgramdb.execute_update(con, "UPDATE `recognize_tasks` SET `RES` = %s, `LOG` = %s  WHERE `ID` = %s", [result, 'Successfully processed result', id])
                 except Exception as e:
                     print('Exception: ' + traceback.format_exc())
