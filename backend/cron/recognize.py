@@ -14,6 +14,7 @@ import io
 from google.cloud import speech_v1
 from google.cloud.speech_v1 import enums
 from google.cloud.speech_v1 import types
+from scipy.io import wavfile
 
 path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(path + "/../")

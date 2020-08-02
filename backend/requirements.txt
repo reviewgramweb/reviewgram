@@ -5,3 +5,9 @@ python-dotenv
 PyMySQL
 pycryptodome
 google-cloud-speech
+scipy
+noisereduce
+pydub
+wave
+numpy
+PySoundFile
