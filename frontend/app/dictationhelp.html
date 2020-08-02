@@ -312,5 +312,28 @@
             </table>
         </div>
     </div>
+    <script type="text/javascript" src="vendor/jquery/jquery.min.js"></script>
+    <script type="text/javascript">
+        function resizeParagraphs() {
+            $("p,table,h1,h2,h3").css("max-width", ($(window).width() - 20) + "px");
+        }
+        function reduceTables() {
+            var rows = $("tr");
+            for (var i = 0; i < rows.length; ++i) {
+                var cells = $(rows[i]).find("td");
+                var lines = [];
+                for (var j = 1; j < cells.length; ++j) {
+                    lines.push($(cells[j]).html());
+                    if (j > 1) {
+                        $(cells[j]).remove();
+                    }
+                }
+                $(cells[1]).html(lines.join(", "));
+            }
+        }
+        $("window").resize(resizeParagraphs);
+        resizeParagraphs();
+        reduceTables();
+    </script>
 </body>
 </html>
