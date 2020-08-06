@@ -12,8 +12,17 @@ import io
 from google.cloud import speech_v1
 from google.cloud.speech_v1 import enums
 from google.cloud.speech_v1 import types
+import subprocess
 
-source = "/root/reviewgram/records/7ada9452-b3fd-43dd-bfe9-a2172f5afd1e-1596387802.174692.wav"
+source = "/root/reviewgram/records/3b40df3a-9ecc-4544-9ea2-3f2c3e657af5-1596654876.341333.ogg"
+def ogg2wav_convert(old, new):
+    result = subprocess.run(['ffmpeg', "-hide_banner", "-loglevel", "panic", "-y", "-i", old, new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return result.stderr.decode("UTF-8")
+
+ogg2wav_convert(source, "/root/reviewgram/records/8b93eeaa-548f-4b0d-9df1-fa70e0fc8b57-1596653786.1714177.wav")
+source = "/root/reviewgram/records/8b93eeaa-548f-4b0d-9df1-fa70e0fc8b57-1596653786.1714177.wav"
+
+
 table = []
 
 
@@ -57,7 +66,7 @@ original = AudioSegment.from_wav(source)
 chunks = split_on_silence (
     original, 
     min_silence_len = 300,
-    silence_thresh = -24
+    silence_thresh = -70
 )
 
 print(len(chunks))
@@ -66,11 +75,11 @@ args = []
 for i, chunk in enumerate(chunks):
     my_dest = dest + "-" + str(i) + ".wav"
     chunk.export(my_dest, format="wav")
-    if (reduce):
-        rate, data = wavfile.read(my_dest) 
-        data = data/1.0
-        reduced_noise = nr.reduce_noise(audio_clip=data, noise_clip=noisy_part, verbose=True)
-        wavfile.write(my_dest, rate, reduced_noise)
+    #if (reduce):
+    #    rate, data = wavfile.read(my_dest) 
+    #    data = data/1.0
+    #    reduced_noise = nr.reduce_noise(audio_clip=data, noise_clip=noisy_part, verbose=True)
+    #    wavfile.write(my_dest, rate, reduced_noise)
     data, samplerate = sf.read(my_dest)
     sf.write(my_dest, data, samplerate, subtype='PCM_16')
     args.append(my_dest)
@@ -79,3 +88,4 @@ with concurrent.futures.ThreadPoolExecutor() as executor:
     futures = [executor.submit(recognize_data, arg) for arg in args]
     print(" ".join([future.result() for future in futures]))
 
+print(recognize_data(source))
