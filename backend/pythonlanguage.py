@@ -1,14 +1,23 @@
 from language import Language
 from pythonautocompleter import PythonAutocompleter
 from pythonsyntaxchecker import PythonSyntaxChecker
- 
-# Абстрактный класс языка для работы с ними
+from tokenize import tokenize, untokenize, NUMBER, STRING, NAME, OP
+from io import BytesIO
+from Levenshtein import distance
+
+def entry_score_hash(item):
+    if (item["first"]):
+        return -1000000 - item["score"]
+    else:
+        return 0 - item["score"]
+
+# Класс для работы с языком Python
 class PythonLanguage(Language): 
     def __init__(self):
         self.autocompleter = PythonAutocompleter()
         self.syntaxChecker = PythonSyntaxChecker()
         keywords = [
-            ["False",	"false	pause"],						
+            ["False",	"false", "pause"],						
             ["await",	"the way",	"wait out"],						
             ["else",	"elsa"],							
             ["import",	"input",	"importance",	"+registry",	"+first"],
@@ -21,14 +30,14 @@ class PythonLanguage(Language):
             ["True",	"through",	"true",	"future"],
             ["return",	"returned"],
             ["and",	"and keyword",	"and keywords",	"and keyboard",	"and key west"],
-            ["for",	"4 keyword", "4 keywordы", "4keyword",	"4keywords",	"for keyword",	"for keywords",	"for key west"],
+            ["for",	"4 keyword", "4 keywords", "4keyword",	"4keywords",	"for keyword",	"for keywords",	"for key west"],
             ["lambda",	"lomza",	"lambda"],
             ["try",	"troy"],
-            ["as",	"ave",	"ass",	"OS",	"a s"],
+            ["as",	"ave",	"ass",	"OS",	"a s", "+registry"],
             ["def",	"death",	"define",	"definition", "+first"],
             ["from",	"From"],
             ["nonlocal",	"non-local",	"9 local",	"9 logo"],
-            ["while",	"I'll",	"wow"],
+            ["while",	"I'll",	"wow", "+registry"],
             ["assert",	"assault"],
             ["del",	"jail",	"zelle",	"jealous"],
             ["global",	"Global", "+registry"],
@@ -93,23 +102,30 @@ class PythonLanguage(Language):
             ["$",	"dollar sign"],								
             ["?",	"question mark"],								
             ["`",	"grave accent",	"gravis",	"graphics and"],						
-            ["0",	"zero",								"+no_space"],
-            ["1",	"one",								"+no_space"],
-            ["2",	"two",								"+no_space"],
-            ["3",	"three",								"+no_space"],
-            ["4",	"four",								"+no_space"],
-            ["5",	"five",								"+no_space"],
-            ["6",	"six",								"+no_space"],
-            ["7",	"seven",								"+no_space"],
-            ["8",	"eight",								"+no_space"],
-            ["9",	"nine",								"+no_space"],
+            ["0",	"zero"],
+            ["1",	"one"],
+            ["2",	"two"],
+            ["3",	"three"],
+            ["4",	"four"],
+            ["5",	"five"],
+            ["6",	"six"],
+            ["7",	"seven"],
+            ["8",	"eight"],
+            ["9",	"nine"],
             ["_"	"underscore"],								
             ["\t",	"tab",	"temp",	"tabs"],						
             [" ",	"space",	"bass"],
             ["master",	"Master",								"+registry"],
             ["slave",	"Slave",								"+registry"],
             ["frontend",	"front-end"],								
-            ["backend",	"back-end"]								
+            ["backend",	"back-end"],
+            ["frontend",	"front end"],
+            ["backend",	"back end"],
+            ["backend",	"black ant"],
+            ["frontend",	"bronte and"],
+            ["frontend", "bronx france"],
+            ["frontend", "front and"],
+            ["frontend", "front ends"]
         ]
 
         modules = [
@@ -215,8 +231,70 @@ class PythonLanguage(Language):
             ["xml","accident","flexinail"],
             ["ctypes","sea types","c types","seaside","c-type","seat height"]
         ]
+        self.keywords = self.commandListToObjects(keywords)
+        self.common = self.commandListToObjects(common)
+        self.modules = self.commandListToObjects(modules)
         super().__init__()
     
+    # Превращает список писков слов в структурированные описания слов
+    # commands (str[][]) - команды
+    # Возвращает
+    # dict[] со списком распознавания
+    def commandListToObjects(self, commands):
+        result = []
+        for command in commands:
+            o = {"to_word": "", "from_words": [], "registry": False, "first": False}
+            i = 0
+            for item in command:
+                if (i == 0):
+                    o["to_word"] = item
+                else:
+                    if (item == "+registry"):
+                        o["registry"] = True
+                    else:
+                            if (item == "+first"):
+                                o["first"] = True
+                            else:
+                                o["from_words"].append(item.split(" "))
+                i = i + 1
+            for item in o["from_words"]:
+                r = {"to_word": o["to_word"], "from_words": item, "registry": o["registry"], "first": o["first"], "score": 0}
+                j = 0
+                for word in item:
+                    r["score"] = r["score"] + len(word)
+                    if (j != 0):
+                        r["score"] = r["score"] + 1
+                    j = j + 1
+                result.append(r)
+        return sorted(result, key=entry_score_hash)
+    
+    # Возвращает список подсказок для распознавания
+    def getRecognitionHints(self):
+        result = []
+        entries = [self.keywords, self.common, self.modules]
+        for entry in entries:
+            for item in entry:
+                if (item["to_word"][0].isalpha()):
+                    result.append(item["to_word"])
+        return list(set(result))
+        
+    # Возвращает идентификаторы из файла
+    # content (str) содержимое файла
+    # Возвращает
+    # list со списком идентификаторов
+    def getIdentifierList(self, content):
+        try:
+            raise Error("222")
+            result = []
+            stream = tokenize(BytesIO(content.encode('utf-8')).readline)
+            for tt, tokval, _, _, _ in stream:
+                tokval = tokval.strip()
+                if (len(tokval) and (tt == NAME)):
+                    result.append(tokval)
+            return result
+        except:
+            return []
+
     # Проверка синтаксиса, где
     # fileName  (str) - имя файла
     # fileContent  (str) - содержимое файла

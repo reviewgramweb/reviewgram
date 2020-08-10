@@ -15,12 +15,22 @@ from google.cloud import speech_v1
 from google.cloud.speech_v1 import enums
 from google.cloud.speech_v1 import types
 from scipy.io import wavfile
+from pydub import AudioSegment
+from pydub.silence import split_on_silence
+import noisereduce as nr
+import os
+import wave
+import numpy as np
+import concurrent.futures
+import soundfile as sf
 
 path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(path + "/../")
 
 import reviewgramdb
 from reviewgramlog import *
+from pythonlanguage import PythonLanguage
+from genericlanguage import GenericLanguage
 
 env_path = Path(path + "/../") / '.env'
 load_dotenv(dotenv_path=env_path)
@@ -31,13 +41,15 @@ expiration_time = 30 * 60
 def ogg2wav_convert(old, new):
     result = subprocess.run(['ffmpeg', "-hide_banner", "-loglevel", "panic", "-y", "-i", old, new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return result.stderr.decode("UTF-8")
-    
-def try_recognize(fileName, table):
+
+def try_recognize_voice(arg):
+    hints = arg[0]
+    fileName = arg[1]
     encoding = enums.RecognitionConfig.AudioEncoding.LINEAR16
     sample_rate_hertz = 48000
     language_code = 'en-US'
     model = 'command_and_search'
-    config = {'encoding': encoding, 'sample_rate_hertz': sample_rate_hertz, 'language_code': language_code, 'model': model, 'speech_contexts': [ speech_v1.types.SpeechContext(phrases=['insert', 'tab', 'space', 'juggle', 'remove', 'master', 'branch', 'backend', 'frontend', 'main', 'dot', 'py', 'import', 'os', 'sys', 'pymongo', 'tokenize', 'untokenize', 'comma', 'op', 'colon', 'semicolon', 'quote', 'single', 'round', 'square', 'curvy', 'bracket', 'opening', 'closing', 'left', 'right', 'brace', 'caret', 'modulus', 'floor', 'division', 'ampersand', 'bitwise', 'assign', 'arrow', 'lambda', 'def', 'as', 'while', 'assert', 'del', 'async', 'elif', 'yield', 'shell', 'utilities', 'unit', 'test', 'find', 'copy', 'path', 'json', 'calendar', 'pickle', 'iteration', 'tools', 'weak', 'built-ins', 'debug', 'functools', 'context', 'heap', 'queue', 'warnings', 'doc', 'structure', 'string', 'config', 'parser', 'shelve', 'tar', 'temp', 'error', 'file', 'mapping', "parse", "signal", "select", "registry", "asynchronous", "chat", "core"]) ]}
+    config = {'encoding': encoding, 'sample_rate_hertz': sample_rate_hertz, 'language_code': language_code, 'model': model, 'speech_contexts': [ speech_v1.types.SpeechContext(phrases=hints) ]}
     content = ""
     with io.open(fileName, "rb") as f:
         content = f.read()
@@ -49,7 +61,64 @@ def try_recognize(fileName, table):
     for result in response.results:
         alternative = result.alternatives[0]
         total_result.append(alternative.transcript)
-    return " ".join(total_result).replace(". ", "")
+    return " ".join(total_result)
+
+def try_recognize(fileName, table, lang, sourceFileContent):
+    hints = []
+    for row in table:
+        hints.append(row[1])
+    if lang is not None:
+        hints = hints + lang.getRecognitionHints()
+    
+    source = fileName 
+    
+    rate, data = wavfile.read(fileName) 
+    length = len(data)/rate
+    noise_length = 1
+
+    dest = source
+    reduce = False
+    if (length > 2.0):
+        data = data/1.0
+        reduce = True
+        rate, data = wavfile.read(source) 
+        data = data/1.0
+        noisy_part = data[0:rate*noise_length]
+    
+    
+    original = AudioSegment.from_wav(source)
+    chunks = split_on_silence (
+        original, 
+        min_silence_len = 300,
+        silence_thresh = -70
+    )
+
+    print("Split file " + source + " into "  + str(len(chunks)) + "")
+
+    args = []
+    for i, chunk in enumerate(chunks):
+        my_dest = dest + "-" + str(i) + ".wav"
+        chunk.export(my_dest, format="wav")
+        #if (reduce):
+        #    rate, data = wavfile.read(my_dest) 
+        #    data = data/1.0
+        #    reduced_noise = nr.reduce_noise(audio_clip=data, noise_clip=noisy_part, verbose=True)
+        #    wavfile.write(my_dest, rate, reduced_noise)
+        data, samplerate = sf.read(my_dest)
+        sf.write(my_dest, data, samplerate, subtype='PCM_16')
+        args.append([hints, my_dest])
+    result = ""
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(try_recognize_voice, arg) for arg in args]
+        result = " ".join([future.result() for future in futures])
+    
+    for arg in args:
+        os.remove(arg[1])
+    
+    if (lang is None):
+        lang = GenericLanguage()
+    return lang.recognizeStatement(result, table, sourceFileContent)
+    
     
 def select_and_perform_task():
     con = reviewgramdb.connect_to_db()
@@ -83,6 +152,9 @@ def select_and_perform_task():
             langId = 0
             if (row[3] is not None):
                 langId = int(row[3])
+            lang = None
+            if (langId == 1):
+                lang = PythonLanguage()
             content = ""
             if (row[5] is not None):
                 content = row[5]
@@ -98,7 +170,7 @@ def select_and_perform_task():
                     else:
                         reviewgramdb.execute_update(con, "UPDATE `recognize_tasks` SET `RES` = %s, `LOG` = %s  WHERE `ID` = %s", ['', 'Processed ogg 2 wav', id])
                         print("Recognizing...")
-                        result = try_recognize(newFileName, table)
+                        result = try_recognize(newFileName, table, lang, content)
                         reviewgramdb.execute_update(con, "UPDATE `recognize_tasks` SET `RES` = %s, `LOG` = %s  WHERE `ID` = %s", [result, 'Successfully processed result', id])
                 except Exception as e:
                     print('Exception: ' + traceback.format_exc())
