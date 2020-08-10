@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from Levenshtein import distance
  
 # Абстрактный класс языка для работы с ними
 class Language(ABC): 
@@ -51,11 +52,73 @@ class Language(ABC):
         for item in tmp:
             result.append({"original": item, "lower": item.lower(), "replaced": False, "ruleIndex": -1})
         return result
+        
+    # Трансформирует исходную таблицу замен в более надёжную
+    def transformTable(self, table):
+        table_new = []
+        for entry in table:
+            parts = list(filter(lambda x: len(x) > 0, entry[0].split(" ")))
+            if (entry[0].strip() != entry[1].strip()):
+                table_new.append({"from": parts, "to": entry[1], "score": len(entry[0]) *  (-1), "registry": True, "first": False})
+        return table_new
     
-    # Сливает список объектов, объединяя их в строку
-    # objects - входной список
-    # Возвращает строку с объединением
-    def collectReplace(self, objects):
+    # Заменяет данные в записи согласно списку в таблице
+    # item (dict[]) - объекты
+    # table_new (dist[]) - таблица правил
+    # only_second (bool) - только второе
+    # возвращает список для замены
+    def replaceAccordingGenericTables(self, items, table_new, only_second):
+        similarityLimit = 0.25
+        replacedRuleIndex = 0
+        for entry in table_new:
+            replacedRuleIndex = replacedRuleIndex + 1
+            from_parts = entry["from"]
+            to = entry["to"]
+            registry = entry["registry"]
+            first = entry["first"]
+#            print ("Replacing " + str(from_parts) + " to " + to)
+            changed = True
+            i = 0
+            while (changed):
+                changed = False
+#                print ("Starting search")
+                i = 0
+                limit = 0
+                if (not first):
+                    limit = len(items) - len(from_parts)
+                if (only_second):
+                    i = 1
+                    limit = min(1, len(items) - len(from_parts))
+                while ((i <= limit) and (not changed)):
+                    localSlice = items[i:i+len(from_parts)]
+#                    print("Local slice, from: " + str(i) + ": " + str(localSlice))
+                    j = 0
+                    matches = True
+                    while (j < len(from_parts)):
+                        cmpData = localSlice[j]["lower"]
+                        if (registry):
+                            cmpData = localSlice[j]["original"]
+                        matches = matches and (distance(from_parts[j], cmpData) <= len(from_parts[j]) * similarityLimit) and (localSlice[j]["ruleIndex"] != replacedRuleIndex)
+                        j = j + 1
+                    if (matches):
+#                        print ("Found entry at " + str(i))
+                        changed = True
+                        if (i == 0):
+                            items = [{"original": to, "lower": to.lower(), "replaced": True, "ruleIndex": replacedRuleIndex}] +  items[i+len(from_parts):]
+                        else:
+                            items = items[:max(i, 0)] + [{"original": to, "lower": to.lower(), "replaced": True, "ruleIndex": replacedRuleIndex}] +  items[i+len(from_parts):]
+                    i = i + 1
+                    limit = 0
+                    if (not first):
+                        limit = len(items) - len(from_parts)
+                    if (only_second):
+                        limit = min(1, len(items) - len(from_parts))
+#                print (changed)
+#                print (items)
+        return items
+        
+    # Группирует буквы в идентификаторы
+    def groupLetters(self, objects):
         i = 0
         result = []
         while (i < len(objects)):
@@ -107,6 +170,13 @@ class Language(ABC):
                 else:
                     result2.append(tmp[i])
             i = i + 1
+        return result2
+
+    # Сливает список объектов, объединяя их в строку
+    # objects - входной список
+    # Возвращает строку с объединением
+    def collectReplace(self, objects):
+        result2 = self.groupLetters(objects)
         i = 0
         result = ""
         is_opened_single_quote = False

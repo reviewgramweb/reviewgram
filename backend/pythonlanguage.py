@@ -243,11 +243,11 @@ class PythonLanguage(Language):
     def commandListToObjects(self, commands):
         result = []
         for command in commands:
-            o = {"to_word": "", "from_words": [], "registry": False, "first": False}
+            o = {"to": "", "from": [], "registry": False, "first": False}
             i = 0
             for item in command:
                 if (i == 0):
-                    o["to_word"] = item
+                    o["to"] = item
                 else:
                     if (item == "+registry"):
                         o["registry"] = True
@@ -255,10 +255,10 @@ class PythonLanguage(Language):
                             if (item == "+first"):
                                 o["first"] = True
                             else:
-                                o["from_words"].append(item.split(" "))
+                                o["from"].append(item.split(" "))
                 i = i + 1
-            for item in o["from_words"]:
-                r = {"to_word": o["to_word"], "from_words": item, "registry": o["registry"], "first": o["first"], "score": 0}
+            for item in o["from"]:
+                r = {"to": o["to"], "from": item, "registry": o["registry"], "first": o["first"], "score": 0}
                 j = 0
                 for word in item:
                     r["score"] = r["score"] + len(word)
@@ -274,8 +274,8 @@ class PythonLanguage(Language):
         entries = [self.keywords, self.common, self.modules]
         for entry in entries:
             for item in entry:
-                if (item["to_word"][0].isalpha()):
-                    result.append(item["to_word"])
+                if (item["to"][0].isalpha()):
+                    result.append(item["to"])
         return list(set(result))
         
     # Возвращает идентификаторы из файла
@@ -284,7 +284,6 @@ class PythonLanguage(Language):
     # list со списком идентификаторов
     def getIdentifierList(self, content):
         try:
-            raise Error("222")
             result = []
             stream = tokenize(BytesIO(content.encode('utf-8')).readline)
             for tt, tokval, _, _, _ in stream:
@@ -315,3 +314,35 @@ class PythonLanguage(Language):
     # branchId (str) -  ID ветки
     def getAutocompletions(self, con, tokens, content, line, position, chatId, branchId):
         return self.autocompleter.getAutocompletions(con, tokens, content, line, position, chatId, branchId)
+
+
+    # Распознавание фразы на языке
+    # stmt (str) - входное выражение
+    # table (str[][]) таблица автозамен
+    # sourceFileContent (str) контент файла
+    # Возвращает
+    # строку с заменами
+    def recognizeStatement(self, stmt, table, sourceFileContent):
+        items = self.splitStatement(stmt)
+        table_new = self.transformTable(table)
+        items = self.groupLetters(items)
+        items = self.replaceAccordingGenericTables(items, table_new, False)
+        items = self.replaceAccordingGenericTables(items, self.keywords, False)
+        items = self.replaceAccordingGenericTables(items, self.common, False)
+        if (len(items) > 0):
+            if ((items[0]["original"] == "import") or (items[0]["original"] == "from")):
+                items = self.replaceAccordingGenericTables(items, self.modules, True)
+            else:
+                identifiers = self.getIdentifierList(sourceFileContent)
+                limit = 0.25
+                for identifier in identifiers:
+                    idlower = identifier.lower()
+                    i = 0
+                    while (i < len(items)):
+                        if ((distance(idlower, items[i]["lower"]) < limit * len(idlower)) and (not items[i]["replaced"])):
+                            items[i]["original"] = identifier
+                            items[i]["lower"] = identifier.lower()
+                            items[i]["replaced"] = True
+                        i = i + 1
+        return self.collectReplace(items)
+        

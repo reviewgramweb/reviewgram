@@ -1,7 +1,6 @@
 from language import Language
 from Levenshtein import distance
 
-
 # Обычный язык для распознавания
 class GenericLanguage(Language): 
     def __init__(self):
@@ -41,11 +40,7 @@ class GenericLanguage(Language):
     # строку с заменами
     def recognizeStatement(self, stmt, table, sourceFileContent):
         items = self.splitStatement(stmt)
-        table_new = []
-        for entry in table:
-            parts = list(filter(lambda x: len(x) > 0, entry[0].split(" ")))
-            if (entry[0].strip() != entry[1].strip()):
-                table_new.append({"from": parts, "to": entry[1], "score": len(entry[0]) *  (-1)})
+        table_new = self.transformTable(table)
         local_table = [
             ["0",	"zero"],
             ["1",	"one"],
@@ -76,7 +71,7 @@ class GenericLanguage(Language):
         for entry in local_table:
 #            print (entry)
             parts = list(filter(lambda x: len(x) > 0, entry[1].split(" ")))
-            table_new.append({"from": parts, "to": entry[0], "score": len(entry[1]) *  (-1)})
+            table_new.append({"from": parts, "to": entry[0], "score": len(entry[1]) *  (-1), "registry": False, "first": False})
         i = 0 
         while (i < len(items)):
             if (distance(items[i]["original"],"Master") < 3):
@@ -84,36 +79,5 @@ class GenericLanguage(Language):
             if (distance(items[i]["original"], "Slave") < 2):
                 items[i]["original"] = "slave"
             i = i + 1
-        similarityLimit = 0.25
-        replacedRuleIndex = 0
-        for entry in table_new:
-            replacedRuleIndex = replacedRuleIndex + 1
-            from_parts = entry["from"]
-            to = entry["to"]
-#            print ("Replacing " + str(from_parts) + " to " + to)
-            changed = True
-            i = 0
-            while (changed):
-                changed = False
-#                print ("Starting search")
-                i = 0
-                while ((i <= len(items) - len(from_parts)) and (not changed)):
-                    localSlice = items[i:i+len(from_parts)]
-#                    print("Local slice, from: " + str(i) + ": " + str(localSlice))
-                    j = 0
-                    matches = True
-                    while (j < len(from_parts)):
-                        matches = matches and (distance(from_parts[j], localSlice[j]["lower"]) <= len(from_parts[j]) * similarityLimit) and (localSlice[j]["ruleIndex"] != replacedRuleIndex)
-                        j = j + 1
-                    if (matches):
-#                        print ("Found entry at " + str(i))
-                        changed = True
-                        if (i == 0):
-                            items = [{"original": to, "lower": to.lower(), "replaced": True, "ruleIndex": replacedRuleIndex}] +  items[i+len(from_parts):]
-                        else:
-                            items = items[:max(i, 0)] + [{"original": to, "lower": to.lower(), "replaced": True, "ruleIndex": replacedRuleIndex}] +  items[i+len(from_parts):]
-                    i = i + 1
-#                print (changed)
-#                print (items)
-                
-        return self.collectReplace(items)
+        
+        return self.collectReplace(self.replaceAccordingGenericTables(items, table_new, False))

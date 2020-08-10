@@ -189,3 +189,5 @@ while (i < max):
     end_time = int(time.time())
     if (end_time - start_time > 15 * max):
         break
+    else:
+        time.sleep(15 - (end_time - start_time))
