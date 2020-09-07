@@ -26,6 +26,7 @@ import jedi
 import errno
 import signal
 import uuid
+import subprocess
 
 load_dotenv(find_dotenv())
 
@@ -589,6 +590,8 @@ def start_recognizing():
     if (langId is None):
         langId = 0
     rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID, CONTENT, REPO_ID) VALUES (%s, %s, %s, %s)", [fileName, langId, content, repoId])
+    file = os.path.dirname(os.path.abspath(__file__)) + "/cron/recognize.py"
+    subprocess.Popen(["python3", file])
     return jsonify({"id": rowId})
     
 @app.route('/reviewgram/recognizing_status/', methods=['GET'])
