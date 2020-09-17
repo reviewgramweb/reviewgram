@@ -6,6 +6,7 @@ from reviewgramdb import *
 from reviewgramlog import *
 from repoutils import *
 from languagefactory import LanguageFactory
+from socket import *
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -27,6 +28,7 @@ import errno
 import signal
 import uuid
 import subprocess
+import sys
 
 load_dotenv(find_dotenv())
 
@@ -563,6 +565,9 @@ def get_autocompletions():
     
 @app.route('/reviewgram/start_recognizing/', methods=['POST'])
 def start_recognizing():
+    perfLogFileName =  os.getenv("APP_FOLDER") + "/perf_log.txt"
+    fileObject = open(perfLogFileName, 'at')
+    start = time.perf_counter() 
     langId = request.form.get("langId")
     content = request.form.get("content")
     record = request.files.get("record")
@@ -577,21 +582,40 @@ def start_recognizing():
     if (request.form.get("langId") is not None):
         append_to_log("/reviewgram/start_recognizing: " + request.form.get("langId"))
     if (record is None):
+        fileObject.close()
         return jsonify([])
+    measure1 = time.perf_counter()
+    fileObject.write("Pretesting args for recognition: " + str(measure1 - start)  + "\n")
     record.seek(0, os.SEEK_END)
     fileLength = record.tell()
     if (fileLength >= int(os.getenv("MAX_RECORD_SIZE")) * 1024 * 1024):
+        fileObject.close()
         return jsonify({"error": "file is too large: " + str(fileLength) })
     fileName = os.getenv("APP_FOLDER") + "records/" + str(uuid.uuid4()) + "-" +  str(time.time()) + ".ogg"
     append_to_log("/reviewgram/start_recognizing: " + fileName)
+    measure2 = time.perf_counter()
+    fileObject.write("Measuring file size: " + str(measure2 - measure1)  + "\n")
     record.seek(0, os.SEEK_SET)
     record.save(fileName)
+    measure3 = time.perf_counter()
+    fileObject.write("Saving file: " + str(measure3 - measure2)  + "\n")
     con = connect_to_db()
     if (langId is None):
         langId = 0
     rowId = execute_insert(con, "INSERT INTO `recognize_tasks`(FILENAME, LANG_ID, CONTENT, REPO_ID) VALUES (%s, %s, %s, %s)", [fileName, langId, content, repoId])
-    file = os.path.dirname(os.path.abspath(__file__)) + "/cron/recognize.py"
-    subprocess.Popen(["python3", file])
+    host = '127.0.0.1'
+    port = 9090
+    addr = (host,port)
+
+    tcp_socket = socket(AF_INET, SOCK_STREAM)
+    tcp_socket.connect(addr)
+    data = "1".encode("utf-8")
+    tcp_socket.send(data)
+    tcp_socket.close()
+
+    measure4 = time.perf_counter()
+    fileObject.write("Saving to DB and launching task: " + str(measure4 - measure3)  + "\n")
+    fileObject.close()
     return jsonify({"id": rowId})
     
 @app.route('/reviewgram/recognizing_status/', methods=['GET'])

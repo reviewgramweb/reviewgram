@@ -98,7 +98,10 @@ class Language(ABC):
                         cmpData = localSlice[j]["lower"]
                         if (registry):
                             cmpData = localSlice[j]["original"]
-                        matches = matches and (distance(from_parts[j], cmpData) <= len(from_parts[j]) * similarityLimit) and (localSlice[j]["ruleIndex"] != replacedRuleIndex)
+                        localSliceRuleIndex = None
+                        if ("ruleIndex" in localSlice[j]):
+                            localSliceRuleIndex = localSlice[j]["ruleIndex"]
+                        matches = matches and (distance(from_parts[j], cmpData) <= len(from_parts[j]) * similarityLimit) and (localSliceRuleIndex != replacedRuleIndex)
                         j = j + 1
                     if (matches):
 #                        print ("Found entry at " + str(i))
