@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve reviewgram
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/root/reviewgram
+Environment="PATH=/root/reviewgram/rvenv/bin"
+ExecStart=/root/reviewgram/rvenv/bin/gunicorn --log-level debug  --log-file /etc/gunicorn.log   --workers 3 --bind unix:/tmp/reviewgram.sock -m 777 wsgi:app
+
+[Install]
+WantedBy=multi-user.target
