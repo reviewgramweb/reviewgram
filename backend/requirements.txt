@@ -12,3 +12,5 @@ wave
 numpy
 PySoundFile
 python-Levenshtein
+torch
+nltk
