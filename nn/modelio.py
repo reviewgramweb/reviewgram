@@ -458,7 +458,7 @@ def encode_model_input(s):
         result_input.append(padding)
     return [item for sublist in result_input for item in sublist]
 
-print(encode_model_input("bst defines"))
+#print(encode_model_input("bst defines"))
 #i = 0
 #while (i < len(dataset)):
 #    ddd = decode_model_output(dataset[i]["synonym"],dataset[i]["output"])
