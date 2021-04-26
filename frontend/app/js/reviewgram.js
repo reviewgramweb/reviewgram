@@ -951,7 +951,7 @@ function Reviewgram() {
                 "error": function() {
                     $("#rcommit_preloader").css('display', 'none');
                     $("#rcommit_error").css('display', 'block');
-                    $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, попробуйте ещё раз");
+                    $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, проверьте настройки репозитория и попробуйте ещё раз");
                     $("#rcommit_error").find(".buttons").css("display", "block");
                     $(".md_modal_title, .navbar-quick-media-back h4").html("Ошибка");
                     $(".btn-repeat").attr("data-invoke", 'fetchBranchesList').removeAttr('data-arg');
