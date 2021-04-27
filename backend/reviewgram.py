@@ -342,10 +342,13 @@ def bot_api():
     data = request.json
     if data is None:
         abort(404)
+    message = ""
     try:
         userId = safe_get_key(data, ["message", "from", "id"])
         message = safe_get_key(data, ["message", "text"])
         if ((userId is not None) and (message is not None)):
+            if (message == "/start"):
+                return 'OK'
             decoded = base64.b64decode(message)
             con = connect_to_db()
             with con:
@@ -358,7 +361,7 @@ def bot_api():
             append_to_log("/reviewgram/bot: no data")
             abort(404)
     except Exception as e:
-        append_to_log("/reviewgram/bot: Exception " + traceback.format_exc())
+        append_to_log("/reviewgram/bot: Exception " + traceback.format_exc() + "\nMessage was: " + message)
         abort(404)
     return 'OK'
 
