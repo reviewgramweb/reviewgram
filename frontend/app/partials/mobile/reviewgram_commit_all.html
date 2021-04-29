@@ -131,6 +131,55 @@
               </div>
           </div>
       </div>
+      <div class="edit-tab-container">
+          <div class="header">
+              <div class="section-arrow arrow-right"></div>
+              Вставить оператор/шаблон выражения
+          </div>
+          <div class="body">
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="insertIfLess()">if (_ &lt; _):</button>
+                  <button class="btn btn-md" ng-click="insertIfGt()">if (_ &gt; _):</button>
+                  <button class="btn btn-md" ng-click="insertIfEq()">if (_ == _):</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="insertIfLeq()">if (_ &lt;= _):</button>
+                  <button class="btn btn-md" ng-click="insertIfGeq()">if (_ &gt;= _):</button>
+                  <button class="btn btn-md" ng-click="insertIfNeq()">if (_ != _):</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="insertIfLessElse()">if (_ &lt; _): else:</button>
+                  <button class="btn btn-md" ng-click="insertIfGtElse()">if (_ &gt; _): else:</button>
+                  <button class="btn btn-md" ng-click="insertIfEqElse()">if (_ == _): else:</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="insertIfLeqElse()">if (_ &lt;= _): else:</button>
+                  <button class="btn btn-md" ng-click="insertIfGeqElse()">if (_ &gt;= _): else:</button>
+                  <button class="btn btn-md" ng-click="insertIfNeqElse()">if (_ != _): else:</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="whileIfLess()">while (_ &lt; _):</button>
+                  <button class="btn btn-md" ng-click="whileIfGt()">while (_ &gt; _):</button>
+                  <button class="btn btn-md" ng-click="whileIfEq()">while (_ == _):</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="whileIfLeq()">while (_ &lt;= _):</button>
+                  <button class="btn btn-md" ng-click="whileIfGeq()">while (_ &gt;= _):</button>
+                  <button class="btn btn-md" ng-click="whileIfNeq()">while (_ != _):</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="insertForIn">for _ in _:</button>
+                  <button class="btn btn-md" ng-click="insertForInRange()">for _ in range(_):</button>
+                  <button class="btn btn-md" ng-click="insertTryExcept()">try: except Exception as e:</button>
+              </div>
+              <div class="margin-bottom-10">
+                  <button class="btn btn-md" ng-click="insertBreak()">break</button>
+                  <button class="btn btn-md" ng-click="insertContinue()">continue</button>
+                  <button class="btn btn-md" ng-click="insertReturn()">return</button>
+                  <button class="btn btn-md" ng-click="insertImportStmt()">import</button>
+              </div>
+          </div>
+      </div>
       <div class="edit-tab-container autocompletion">
           <div class="header">
               <div class="section-arrow arrow-right"></div>
