@@ -1,5 +1,6 @@
 flask
 pyflakes
+pylint
 jedi
 python-dotenv
 PyMySQL

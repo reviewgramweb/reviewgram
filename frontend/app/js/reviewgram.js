@@ -168,6 +168,8 @@ function Reviewgram() {
     this._isEditRequestRunning = false;
     // @var {Number} хендл на автодополнение
     this._autocompleteSendTimeoutHandle = null;
+    // @var {Number} конец отредактированного участка
+    this._editedRangeEnd = null;
 
     this.__selectAceGutterRange = function(parent, start, end) {
         var list = $(parent + " .ace_gutter-cell");
@@ -608,6 +610,7 @@ function Reviewgram() {
         }
         var end = strings.slice(rangeEnd);
         var middle = this._mainEditor.session.doc.getAllLines();
+        this._editedRangeEnd = Math.max(rangeEnd, this._editorRange.start + middle.length - 1);
         var content = begin.concat(middle).concat(end);
         this._resultFileContent = content.join(this._editedFile.lineSeparator);
         return this._resultFileContent;
@@ -1461,7 +1464,10 @@ function Reviewgram() {
             $scope.performSyntaxCheck();
         };
        $scope.performSyntaxCheck = function() {
-           var rangeEnd = me._editorRange.end;
+           var rangeEnd = me._editedRangeEnd;
+           if (rangeEnd == null) {
+               rangeEnd = me._editorRange.end;
+           }
            if (rangeEnd == null) {
                rangeEnd = me._editorRange.start;
            }
