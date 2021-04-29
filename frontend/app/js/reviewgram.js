@@ -757,6 +757,9 @@ function Reviewgram() {
     this.showSettingsModal = function() {
         var $scope = this._webogramAdapter.$rootScope.$new();
         this._webogramAdapter.$scope = $scope;
+        $scope.onClose = function () {
+          console.log("Show settings window destroyed");
+        };
         this._webogramAdapter.$modal.open({
             controller: 'ReviewgramRepoSettingsController',
             templateUrl: templateUrl('reviewgram_repo_settings_all'),
@@ -828,6 +831,9 @@ function Reviewgram() {
     this.showMakeCommitModal = function() {
         var $scope = this._webogramAdapter.$rootScope.$new();
         this._webogramAdapter.$scope = $scope;
+        $scope.onClose = function () {
+          console.log("Make commit window destroyed");
+        };
         this._webogramAdapter.$modal.open({
             controller: 'ReviewgramCommitWindowController',
             templateUrl: templateUrl('reviewgram_commit_all'),

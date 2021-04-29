@@ -1007,6 +1007,11 @@ angular.module('ui.bootstrap.modal', ['ui.bootstrap.transition'])
       $modalStack.close = function (modalInstance, result) {
         var modalWindow = openedWindows.get(modalInstance);
         if (modalWindow) {
+          if ('modalScope' in modalWindow.value) {
+              if ('onClose' in modalWindow.value.modalScope) {
+                  modalWindow.value.modalScope.onClose();
+              }
+          }
           modalWindow.value.deferred.resolve(result);
           removeModalWindow(modalInstance);
         }
@@ -1015,6 +1020,11 @@ angular.module('ui.bootstrap.modal', ['ui.bootstrap.transition'])
       $modalStack.dismiss = function (modalInstance, reason) {
         var modalWindow = openedWindows.get(modalInstance);
         if (modalWindow) {
+          if ('modalScope' in modalWindow.value) {
+              if ('onClose' in modalWindow.value.modalScope) {
+                  modalWindow.value.modalScope.onClose();
+              }
+          }
           modalWindow.value.deferred.reject(reason);
           removeModalWindow(modalInstance);
         }
