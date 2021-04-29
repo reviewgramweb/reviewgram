@@ -29,6 +29,7 @@ import signal
 import uuid
 import subprocess
 import sys
+import binascii
 
 load_dotenv(find_dotenv())
 
@@ -202,7 +203,7 @@ def table_try_autocomplete_with_max_amount(con, lexemes, maxAmount, langId):
                     'name_with_symbols': row[0]
                 })
     if (len(result) < maxAmount):
-        result  = result + table_try_autocomplete_with_max_amount(con, lexemes[1:], maxAmount - len(result))
+        result  = result + table_try_autocomplete_with_max_amount(con, lexemes[1:], maxAmount - len(result), langId)
     return result
 
 
@@ -360,9 +361,12 @@ def bot_api():
         else:
             append_to_log("/reviewgram/bot: no data")
             abort(404)
+    except binascii.Error:
+        append_to_log("/reviewgram/bot: Unable to decode message: " + message)
+        return 'ERROR'
     except Exception as e:
         append_to_log("/reviewgram/bot: Exception " + traceback.format_exc() + "\nMessage was: " + message)
-        abort(404)
+        return 'ERROR'
     return 'OK'
 
 
