@@ -170,6 +170,8 @@ function Reviewgram() {
     this._autocompleteSendTimeoutHandle = null;
     // @var {Number} конец отредактированного участка
     this._editedRangeEnd = null;
+    // @var {Object} статус модального окна
+    this._modalState = {"opened": false};
 
     this.__selectAceGutterRange = function(parent, start, end) {
         var list = $(parent + " .ace_gutter-cell");
@@ -345,6 +347,7 @@ function Reviewgram() {
             }
         }
         var me = this;
+        var state = me._modalState;
         e.find(".button-wrapper.common").click(function() {
             var parent = $(this).closest(".reviewgram-microphone-widget");
             me._currentRecorderId = parseInt(parent.attr('specific-id'));
@@ -363,6 +366,7 @@ function Reviewgram() {
                 parent.addClass("append");
             }
             var stopRecognizing = function() {
+                if (state.opened == false) return;
                 parent.removeClass("recognizing");
                 parent.find(".label").html("&lt;-Нажмите, чтобы<br/>&lt;-ввести голосом<br/>&lt;-или дополнить");
                 $(".btn-next-tab").removeAttr("disabled");
@@ -381,6 +385,7 @@ function Reviewgram() {
                     clearTimeout(me._recordTimerTimeoutHandle);
                     me._recordTimerTimeoutHandle = null;
                 }
+
                 var tryPollForResult = function() {
                     makeRepeatedRequest({
                         "url": "/reviewgram/recognizing_status/?id=" + me._recognizingPollId,
@@ -388,6 +393,7 @@ function Reviewgram() {
                         "cache" : false,
                         "dataType": "json"
                     }, function(o) {
+                        if (state.opened == false) return;
                         if (parent.hasClass("recognizing")) {
                             if (o["status"] == "ok") {
                                 me._recognizingPollTaskHandle = null;
@@ -414,6 +420,7 @@ function Reviewgram() {
                     });
                 };
                 var waitForDataAndStartRecognizing = function() {
+                    if (state.opened == false) return;
                     if (me._recordBlob == null) {
                         setTimeout(waitForDataAndStartRecognizing, 1000);
                     } else {
@@ -450,6 +457,7 @@ function Reviewgram() {
                   parent.addClass("in-process");
                   parent.find(".label").html("Идёт запись");
                   me._recordTimerTimeoutHandle = setTimeout(function() {
+                    if (state.opened == false) return;
                     btn.trigger("click");
                     me._recordTimerTimeoutHandle = null;
                   }, me._recordTimerTimeout);
@@ -533,6 +541,7 @@ function Reviewgram() {
         });
 
         setInterval(function() {
+            if (me._modalState.opened == false) return;
             if ($("#editor_range_select").length != 0) {
                 if ( me._editorRange.start != null) {
                     if ( me._editorRange.end != null) {
@@ -697,6 +706,7 @@ function Reviewgram() {
         var content = b64EncodeUnicode(this._getResultFileContent());
         var tokens = null;
         var me = this;
+        var state = me._modalState;
         try {
             tokens = this._getPreviousTokens(langId, this._mainEditorCursorPosition);
         } catch (e) {
@@ -717,6 +727,7 @@ function Reviewgram() {
                 "langId": langId
             }),
             "success": function(o) {
+                if (state.opened == false) return;
                 if ((row == me._mainEditorCursorPosition.row) && (column == me._mainEditorCursorPosition.column)) {
                     $(".autocompletion .body").html("");
                     for (var i = 0; i < o.length; i++) {
@@ -757,7 +768,9 @@ function Reviewgram() {
     this.showSettingsModal = function() {
         var $scope = this._webogramAdapter.$rootScope.$new();
         this._webogramAdapter.$scope = $scope;
+        var me = this;
         $scope.onClose = function () {
+          me._modalState.opened = false;
           console.log("Show settings window destroyed");
         };
         this._webogramAdapter.$modal.open({
@@ -766,8 +779,10 @@ function Reviewgram() {
             scope: $scope,
             windowClass: 'reviewgram_repo_settings_all_modal_window mobile_modal'
         });
-        var me = this;
+        me._modalState = {"opened": true};
+        var state = me._modalState;
         this._getRepoSettings(this.getCurrentDialog(), function(o) {
+            if (state.opened == false) return;
             $("#repoUserName").val(o.repo_user_name);
             $("#repoSameName").val(o.repo_same_name);
             $("#user").val(o.user);
@@ -820,6 +835,7 @@ function Reviewgram() {
                 row.find(".rcell-right").find("input").val(list[current][1]);
             }
         }, function() {
+            if (state.opened == false) return;
             $("#rsettings_preloader").css('display', 'none');
             $("#rsettings_form").css('display', 'none');
             $("#rsettings_error").css('display', 'block');
@@ -830,8 +846,11 @@ function Reviewgram() {
     // Показывает модалку для коммита
     this.showMakeCommitModal = function() {
         var $scope = this._webogramAdapter.$rootScope.$new();
+        var me = this;
         this._webogramAdapter.$scope = $scope;
+        me._modalState = {"opened": true};        
         $scope.onClose = function () {
+          me._modalState.opened = false;
           console.log("Make commit window destroyed");
         };
         this._webogramAdapter.$modal.open({
@@ -857,6 +876,7 @@ function Reviewgram() {
     // Контроллер для окна установки и получения настроек
     this.repoSettingsController = function($rootScope, $scope, $modal, AppUsersManager, MtpApiManager, $modalInstance) {
         var me = this;
+        var state = me._modalState;
         $scope.submitForm = function() {
             var repoUserName = $("#repoUserName").val().trim();
             var repoSameName = $("#repoSameName").val().trim();
@@ -908,6 +928,7 @@ function Reviewgram() {
                 $("#rsettings_preloader").css('display', 'block');
                 $("#rsettings_form").css('display', 'none');
                 var fun = function(o) {
+                  if (state.opened == false) return;
                   if (o.error.length != 0) {
                       $("#rsettings_preloader").css('display', 'none');
                       $("#rsettings_form").css('display', 'block');
@@ -917,6 +938,7 @@ function Reviewgram() {
                   }
                 };
                 var on404 = function() {
+                      if (state.opened == false) return;
                       $("#rsettings_preloader").css('display', 'none');
                       $("#rsettings_form").css('display', 'none');
                       $("#rsettings_error").css('display', 'block');
@@ -930,6 +952,7 @@ function Reviewgram() {
     // Контроллер для окна проведения изменений
     this.makeCommitController = function($rootScope, $scope, $modal, AppUsersManager, AppPeersManager, MtpApiManager, $modalInstance) {
         var me = this;
+        var state = me._modalState;
         $scope.fetchBranchesList = function() {
             $.ajax({
                 "method": "GET",
@@ -939,6 +962,7 @@ function Reviewgram() {
                 "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/branches",
                 "success": function(o) {
                     console.log(o);
+                    if (state.opened == false) return;
                     var result = "";
                     for (var  i = 0; i < o.length; i++) {
                         var text = escapeHtml(o[i].name);
@@ -958,6 +982,7 @@ function Reviewgram() {
                     $(window).trigger('resize');
                 },
                 "error": function() {
+                    if (state.opened == false) return;
                     $("#rcommit_preloader").css('display', 'none');
                     $("#rcommit_error").css('display', 'block');
                     $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток. Пожалуйста, проверьте настройки репозитория и попробуйте ещё раз");
@@ -999,6 +1024,7 @@ function Reviewgram() {
                    	"url": "/github_api/repos/" +  me._repoSettings.repo_user_name  + "/" +  me._repoSettings.repo_same_name + "/commits/" + me._lastCommit,
                    	"success": function(o) {
                    		console.log(o);
+                        if (state.opened == false) return;
                    		var error = true;
                         if ('commit' in o) {
                             if ('tree' in o['commit']) {
@@ -1016,6 +1042,7 @@ function Reviewgram() {
                         }
                    	},
                    	"error": function() {
+                        if (state.opened == false) return;
                         $("#rcommit_preloader").css('display', 'none');
                         $("#rcommit_error").css('display', 'block');
                         $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Попробуйте ещё раз");
@@ -1036,6 +1063,7 @@ function Reviewgram() {
                 "url": url,
                 "success": function(o) {
                      console.log(o);
+                     if (state.opened == false) return;
                      var error = true;
                      if ('tree' in o) {
                          error = false;
@@ -1074,6 +1102,7 @@ function Reviewgram() {
                      }
                 },
                 "error": function() {
+                    if (state.opened == false) return;
                      $("#rcommit_preloader").css('display', 'none');
                      $("#rcommit_error").css('display', 'block');
                      $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список файлов из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
@@ -1117,6 +1146,7 @@ function Reviewgram() {
                     "password": me._repoSettings.password,
                     "url": me._editedFile.url,
                     "success": function(o) {
+                        if (state.opened == false) return;
                         var error = true;
                         if (('content' in o) && ('encoding' in o)) {
                             error = false;
@@ -1151,6 +1181,7 @@ function Reviewgram() {
                         }
                     },
                     "error": function() {
+                        if (state.opened == false) return;
                         $("#rcommit_preloader").css('display', 'none');
                         $("#rcommit_error").css('display', 'block');
                         $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить содержимое файла из-за ошибки сети. Пожалуйста,  попробуйте ещё раз");
@@ -1490,6 +1521,7 @@ function Reviewgram() {
                    "langId": me._editedFile.langId
                }),
                "success": function(o) {
+                   if (state.opened == false) return;
                    me._isEditRequestRunning = false;
                    var error = true;
                    if ('errors' in o) {
@@ -1531,6 +1563,7 @@ function Reviewgram() {
                    }
                },
                "error": function(xhr) {
+                   if (state.opened == false) return;
                    if (xhr.status == "404" || xhr.status == "403" || xhr.status == "401") {
                        $("#rcommit_preloader").css('display', 'none');
                        $("#rcommit_error").css('display', 'block');
@@ -1568,6 +1601,7 @@ function Reviewgram() {
                 "password": me._repoSettings.password,
                 "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/branches/" + encodeURIComponent(me._branchName),
                 "success": function(o) {
+                    if (state.opened == false) return;
                     var error = true;
                     if ('commit' in o) {
                         if ('sha' in o['commit']) {
@@ -1599,6 +1633,7 @@ function Reviewgram() {
                     }
                 },
                 "error": function(xhr) {
+                    if (state.opened == false) return;
                     if (xhr.status == "404" || xhr.status == "403" || xhr.status == "401") {
                         $("#rcommit_preloader").css('display', 'none');
                         $("#rcommit_confirm").css('display', 'block');
@@ -1732,6 +1767,7 @@ function Reviewgram() {
                     "password": me._repoSettings.password,
                     "url": "/github_api/repos/" + me._repoSettings.repo_user_name  + "/" + me._repoSettings.repo_same_name + "/branches",
                     "success": function(o) {
+                        if (state.opened == false) return;
                         $("#rcommit_preloader").css('display', 'none');
                         $("#rcommit_branch_select").css('display', 'block');
                         $(".md_modal_title, .navbar-quick-media-back h4").html("Выберите ветку");
@@ -1745,6 +1781,7 @@ function Reviewgram() {
                         $("#rcommit_branch_select #branchName ul").html(result);
                     },
                     "error": function() {
+                        if (state.opened == false) return;
                         $("#rcommit_preloader").css('display', 'none');
                         $("#rcommit_error").css('display', 'block');
                         $("#rcommit_error").find(".reviewgram-error").html("Не удалось получить список веток из-за ошибки сети. Пожалуйста, проверьте настройки репозитория.");
@@ -1803,6 +1840,7 @@ function Reviewgram() {
         }
         setTimeout(function() {
             me._getRepoSettings(me.getCurrentDialog(), function(o) {
+                if (state.opened == false) return;
                 me._initMicrophoneWidgets();
                 me._repoSettings = o;
                 if (o.repo_user_name.length == 0 || o.repo_same_name.length == 0 || o.user == 0 || o.password == 0) {
@@ -1814,6 +1852,7 @@ function Reviewgram() {
                     $scope.fetchBranchesList();
                 }
             }, function() {
+                if (state.opened == false) return;
                 $("#rcommit_preloader").css('display', 'none');
                 $("#rcommit_form").css('display', 'none');
                 $("#rcommit_error").css('display', 'block');
