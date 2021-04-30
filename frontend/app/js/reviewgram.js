@@ -848,7 +848,7 @@ function Reviewgram() {
         var $scope = this._webogramAdapter.$rootScope.$new();
         var me = this;
         this._webogramAdapter.$scope = $scope;
-        me._modalState = {"opened": true};        
+        me._modalState = {"opened": true};
         $scope.onClose = function () {
           me._modalState.opened = false;
           console.log("Make commit window destroyed");
@@ -1279,6 +1279,157 @@ function Reviewgram() {
             var pos = me._mainEditor.getCursorPosition();
             me._mainEditor.session.insert(pos, "    ");
             me._mainEditor.focus();
+        };
+        $scope.__getIndentation = function() {
+            var pos = me._mainEditor.getCursorPosition();
+            var lines = me._mainEditor.session.doc.getAllLines();
+            var line = lines[pos.row];
+            var indentation = 0;
+            var indentationFound = false;
+            var indentationSym = "\t";
+            var nextLine = true;
+            if (line.length == 0 || /^[ \t]+$/.test(line)) {
+                nextLine = false;
+            }
+            var i = pos.row;
+            while ((i > -1) && !indentationFound) {
+                line = lines[i];
+                if (line.length != 0 && !/^[ \t]+$/.test(line)) {
+                    indentationFound = true;
+                    indentation  = /^[ \t]*/.exec(line)
+                    var countSpaces = (line.match(/    /g) || []).length;
+                    var countTabs = (line.match(/\t/g) || []).length;
+                    if (countSpaces > countTabs) {
+                        indentationSym = "    ";
+                    }
+                    if (line.endsWith(":")) {
+                        indentation = indentation + indentationSym;
+                    }
+                }
+                i = i - 1;
+            }
+            return {"nextLine": nextLine, "indentation": indentation, "tab": indentationSym};
+        };
+        $scope.insertIfLike = function(s) {
+            var pos = me._mainEditor.getCursorPosition();
+            var indent = this.__getIndentation();
+            var lines = me._mainEditor.session.doc.getAllLines();
+            var row = pos.row, colum = 0;
+            if (indent.nextLine) {
+                me._mainEditor.session.insert({"row": pos.row, "column": lines[pos.row].length}, me._editedFile.lineSeparator);
+                row += 1;
+                column = 0;
+            } else {
+                column = lines[pos.row].length;
+            }
+            text = s +  me._editedFile.lineSeparator + indent.indentation + indent.tab;
+            if (indent.nextLine) {
+                text = indent.indentation + text;
+            }
+            me._mainEditor.session.insert({"row": row, "column": column}, text);
+            me._mainEditor.gotoLine(row + 2,  (indent.indentation + indent.tab).length);
+            me._mainEditor.focus();
+        };
+        $scope.insertIfElseLike = function(s1, s2) {
+            var pos = me._mainEditor.getCursorPosition();
+            var indent = this.__getIndentation();
+            var lines = me._mainEditor.session.doc.getAllLines();
+            var row = pos.row, colum = 0;
+            if (indent.nextLine) {
+                me._mainEditor.session.insert({"row": pos.row, "column": lines[pos.row].length}, me._editedFile.lineSeparator);
+                row += 1;
+                column = 0;
+            } else {
+                column = lines[pos.row].length;
+            }
+            text = s1 +  me._editedFile.lineSeparator + indent.indentation + indent.tab + me._editedFile.lineSeparator + indent.indentation + s2 + me._editedFile.lineSeparator + indent.indentation + indent.tab;
+            if (indent.nextLine) {
+                text = indent.indentation + text;
+            }
+            me._mainEditor.session.insert({"row": row, "column": column}, text);
+            me._mainEditor.gotoLine(row + 2,  (indent.indentation + indent.tab).length);
+            me._mainEditor.focus();
+        };
+        $scope.insertIfLess = function() {
+            $scope.insertIfLike("if (  <  ):");
+        };
+        $scope.insertIfGt = function() {
+            $scope.insertIfLike("if (  >  ):");
+        };
+        $scope.insertIfEq = function() {
+            $scope.insertIfLike("if (  ==  ):");
+        };
+        $scope.insertIfLeq = function() {
+            $scope.insertIfLike("if (  <=  ):");
+        };
+        $scope.insertIfGeq = function() {
+            $scope.insertIfLike("if (  >=  ):");
+        };
+        $scope.insertIfNeq = function() {
+            $scope.insertIfLike("if (  !=  ):");
+        };
+        $scope.insertWhileIfLess = function() {
+            $scope.insertIfLike("while (  <  ):");
+        };
+        $scope.insertWhileIfGt = function() {
+            $scope.insertIfLike("while (  >  ):");
+        };
+        $scope.insertWhileIfEq = function() {
+            $scope.insertIfLike("while (  ==  ):");
+        };
+        $scope.insertWhileIfLeq = function() {
+            $scope.insertIfLike("while (  <=  ):");
+        };
+        $scope.insertWhileIfGeq = function() {
+            $scope.insertIfLike("while (  >=  ):");
+        };
+        $scope.insertWhileIfNeq = function() {
+            $scope.insertIfLike("while (  !=  ):");
+        };
+        $scope.insertForIn = function() {
+            $scope.insertIfLike("for  in  :");
+        };
+        $scope.insertForInRange = function() {
+            $scope.insertIfLike("for  in range( ):");
+        };
+        $scope.insertIfLessElse = function() {
+            $scope.insertIfElseLike("if (  <  ):", "else:")
+        };
+        $scope.insertIfGtElse = function() {
+            $scope.insertIfElseLike("if (  >  ):", "else:")
+        };
+        $scope.insertIfEqElse = function() {
+            $scope.insertIfElseLike("if ( ==  ):", "else:")
+        };
+        $scope.insertIfLeqElse = function() {
+            $scope.insertIfElseLike("if (  <=  ):", "else:")
+        };
+        $scope.insertIfGeqElse = function() {
+            $scope.insertIfElseLike("if (  >=  ):", "else:")
+        };
+        $scope.insertIfNeqElse = function() {
+            $scope.insertIfElseLike("if ( !=  ):", "else:")
+        };
+        $scope.insertTryExcept = function() {
+            $scope.insertIfElseLike("try:", "except Exception as e:")
+        };
+        $scope.__insertWord = function(word) {
+            var pos = me._mainEditor.getCursorPosition();
+            me._mainEditor.session.insert({"row": pos.row, "column": pos.column}, word);
+            me._mainEditor.gotoLine(pos.row + 1,  pos.column + word.length);
+            me._mainEditor.focus();
+        };
+        $scope.insertBreak = function() {
+            this.__insertWord("break");
+        };
+        $scope.insertContinue = function() {
+            this.__insertWord("continue");
+        };
+        $scope.insertReturn = function() {
+            this.__insertWord("return");
+        };
+        $scope.insertImportStmt = function() {
+            this.__insertWord("import ");
         };
         $scope.removeTab = function() {
             var pos = me._mainEditor.getCursorPosition();
