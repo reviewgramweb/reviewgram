@@ -1,6 +1,30 @@
 import pymysql
 import os
 
+
+MONKEYPATCH_PYMYSQL_CONNECTION = True
+
+
+def monkeypatch_pymysql_connection():
+    Connection = pymysql.connections.Connection
+
+    def enter_patch(self):
+        return self
+
+    def exit_patch(self, exc, value, traceback):
+        try:
+            self.rollback()  # Implicit rollback when connection closed per PEP-249
+        finally:
+            self.close()
+
+    Connection.__enter__ = enter_patch
+    Connection.__exit__ = exit_patch
+
+
+if MONKEYPATCH_PYMYSQL_CONNECTION:
+    monkeypatch_pymysql_connection()
+    MONKEYPATCH_PYMYSQL_CONNECTION = False 
+
 # Соединение с БД
 def connect_to_db():
     return pymysql.connect(os.getenv("MYSQL_HOST"), os.getenv("MYSQL_USER"), os.getenv("MYSQL_PASSWORD"), os.getenv("MYSQL_DB"))
