@@ -37,9 +37,7 @@ from genericlanguage import GenericLanguage
 file = os.path.dirname(os.path.abspath(__file__)) + "/recognize_pid.txt"
 env_path = Path(path + "/../") / '.env'
 load_dotenv(dotenv_path=env_path)
-os.chdir(path + "/../repos/");
-
-expiration_time = 30 * 60
+#os.chdir(path + "/../repos/");
 
 def ogg2wav_convert(old, new):
     result = subprocess.run(['ffmpeg', "-hide_banner", "-loglevel", "panic", "-y", "-i", old, new], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -145,6 +143,7 @@ def try_recognize(fileName, table, lang, sourceFileContent):
     return new_result
     
 def select_and_perform_task():
+    expiration_time = 30 * 60
     start = time.perf_counter() 
     con = reviewgramdb.connect_to_db()
     perfLogFileName =  os.getenv("APP_FOLDER") + "/perf_log.txt"
@@ -217,15 +216,11 @@ def select_and_perform_task():
     print("Performed")
 
 
-host = '127.0.0.1'
-port = 9090
-addr = (host,port)
 
 class TCPHandler(StreamRequestHandler):
     def handle(self):     
         select_and_perform_task()
 
-mypid = os.getpid()
 
 def pid_exists(pid): 
     if pid < 0: return False
@@ -238,28 +233,36 @@ def pid_exists(pid):
     else:
         return True
 
-print("PID storage file " + file)
-notRunningAlready = True
-if (os.path.isfile(file)):
-    with open(file, 'rt') as handle:
-        pid = handle.read().replace('\n', '')
-        try:
-            pid = int(pid)
-        except:
-            pid = -1
-        notRunningAlready = not pid_exists(pid)
 
-if (notRunningAlready):
-    print("Running with pid: " + str(mypid))
-    with open(file, 'wt') as handle:
-        handle.write(str(mypid))
-    i = 0
-    max = 20 #max performed tasks
-    start_time = int(time.time())
-    while (i < max):
-        i = i + 1
-        select_and_perform_task()
-    print("Done serving tasks, starting task")
-    server = TCPServer(addr, TCPHandler)
-    server.serve_forever()
-    print("Done!")
+if __name__== "__main__":
+    host = '127.0.0.1'
+    port = 9090
+    addr = (host,port)
+
+    mypid = os.getpid()
+
+    print("PID storage file " + file)
+    notRunningAlready = True
+    if (os.path.isfile(file)):
+        with open(file, 'rt') as handle:
+            pid = handle.read().replace('\n', '')
+            try:
+                pid = int(pid)
+            except:
+                pid = -1
+            notRunningAlready = not pid_exists(pid)
+
+    if (notRunningAlready):
+        print("Running with pid: " + str(mypid))
+        with open(file, 'wt') as handle:
+            handle.write(str(mypid))
+        i = 0
+        max = 20 #max performed tasks
+        start_time = int(time.time())
+        while (i < max):
+            i = i + 1
+            select_and_perform_task()
+        print("Done serving tasks, starting task")
+        server = TCPServer(addr, TCPHandler)
+        server.serve_forever()
+        print("Done!")

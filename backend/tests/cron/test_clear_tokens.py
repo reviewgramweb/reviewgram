@@ -15,7 +15,7 @@ sys.path.append(path + "/../../cron")
 sys.path.append(path + "/../../")
 
 from clear_tokens import clear_tokens
-from reviewgramdb import connect_to_db, execute_insert,select_and_fetch_first_column
+from reviewgramdb import connect_to_db, execute_insert, execute_update, select_and_fetch_first_column
 
 def test_clear_tokens():
     timestamp = int(time.time())
@@ -24,6 +24,7 @@ def test_clear_tokens():
     assert cleanupTime != 0
     con = connect_to_db()
     with con:
+        execute_update(con, "TRUNCATE TABLE `token_to_user_id`" , [])
         execute_insert(con, "INSERT `token_to_chat_id`(`ID`,`TOKEN`, `CHAT_ID`,`TSTAMP`) VALUES (0, '111', 9999, 0)" , [])
         execute_insert(con, "INSERT `token_to_user_id`(`ID`,`TOKEN`, `USER_ID`,`TSTAMP`) VALUES (0, '111', 9999, 0)" , [])
     clear_tokens()
