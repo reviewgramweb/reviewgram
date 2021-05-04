@@ -26,3 +26,4 @@ def test_btrie():
     btrie.add([1,1,0,1])
     assert btrie.max_length == 4
     assert btrie.count_mismatches([0,0,0,0]) == 2
+    assert btrie.count_mismatches([0,0,1,0]) == 3

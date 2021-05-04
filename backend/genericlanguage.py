@@ -4,7 +4,7 @@ from Levenshtein import distance
 # Обычный язык для распознавания
 class GenericLanguage(Language): 
     def __init__(self):
-        return
+        super().__init__()
     
     
     # Возвращает список подсказок для распознавания

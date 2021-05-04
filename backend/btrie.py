@@ -28,7 +28,7 @@ class BTrie:
             i = i + 1
         self.max_length = max(self.max_length, i)
 
-    def max_length(self):
+    def get_max_length(self):
         return self.max_length
         
     def count_mismatches(self,inputs):

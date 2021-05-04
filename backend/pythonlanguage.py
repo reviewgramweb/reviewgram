@@ -7,6 +7,7 @@ from Levenshtein import distance
 from btrie import get_dataset_trie
 from sdnf import compute_model
 from modelio import encode_model_input,decode_model_output
+import traceback
 
 def entry_score_hash(item):
     if (item["first"]):
@@ -330,13 +331,13 @@ class PythonLanguage(Language):
             limit_for_model_application = 0.0171
             encoded_input = encode_model_input(stmt) # входной вектор модели
             btrie = get_dataset_trie()   #trie для матчинга входов
-            if (len(encoded_input) == btrie.max_length()):
+            if (len(encoded_input) == btrie.get_max_length()):
                 mismatches = btrie.count_mismatches(encoded_input)
-                mismatch_ratio = float(mismatches) / float(btrie.max_length())
+                mismatch_ratio = float(mismatches) / float(btrie.get_max_length())
                 if (mismatch_ratio <= limit_for_model_application):
                     return decode_model_output(stmt, compute_model(encoded_input))
         except:
-            print("Unable to work with model")
+            print("Unable to work with model:" + traceback.format_exc())
         items = self.splitStatement(stmt)
         table_new = self.transformTable(table)
         items = self.groupLetters(items)
