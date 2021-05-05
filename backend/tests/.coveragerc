@@ -1,0 +1,32 @@
+[run]
+branch = True
+source =
+    btrie
+    genericlanguage
+    language
+    languagefactory
+    modelio
+    pythonautocompleter
+    pythonlanguage
+    pythonsyntaxchecker
+    repoutils
+    reviewgram
+    reviewgramdb
+    reviewgramlog
+[report]
+exclude_lines =
+    # Have to re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain about missing debug-only code:
+    def __repr__
+    if self\.debug
+    append_to_log
+    # Don't complain if tests don't hit defensive assertion code:
+    raise AssertionError
+    raise NotImplementedError
+    pass
+    # Don't complain if non-runnable code isn't run:
+    if MONKEYPATCH_PYMYSQL_CONNECTION:
+    if 0:
+    if __name__ == .__main__.:

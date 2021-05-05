@@ -230,8 +230,9 @@ def  insert_or_update_token_to_chat(con, chatId, uuid):
     countRows = select_and_fetch_first_column(con, query, [uuid, chatId])
     if (countRows > 0):
         execute_update(con, "UPDATE `token_to_chat_id` SET TSTAMP = UNIX_TIMESTAMP(NOW()) WHERE TOKEN = %s AND CHAT_ID = %s", [uuid, chatId])
+        return 0
     else:
-        execute_update(con, "INSERT INTO `token_to_chat_id`(TOKEN, CHAT_ID, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [uuid, chatId])
+        return execute_insert(con, "INSERT INTO `token_to_chat_id`(TOKEN, CHAT_ID, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [uuid, chatId])
 
 
 def  insert_or_update_repo_lock(con, chatId, uuid):
@@ -239,8 +240,9 @@ def  insert_or_update_repo_lock(con, chatId, uuid):
     countRows = select_and_fetch_first_column(con, query, [chatId])
     if (countRows > 0):
         execute_update(con, "UPDATE `repo_locks` SET TSTAMP = UNIX_TIMESTAMP(NOW()), TOKEN = %s WHERE CHAT_ID = %s", [uuid, chatId])
+        return 0
     else:
-        execute_update(con, "INSERT INTO `repo_locks`(TOKEN, CHAT_ID, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [uuid, chatId])
+        return execute_insert(con, "INSERT INTO `repo_locks`(TOKEN, CHAT_ID, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [uuid, chatId])
 
 # Находится ли пользователь в чате и все связанные с этим проверки
 def is_user_in_chat(uuid, chatId):
