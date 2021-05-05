@@ -68,6 +68,8 @@ class Language(ABC):
     # only_second (bool) - только второе
     # возвращает список для замены
     def replaceAccordingGenericTables(self, items, table_new, only_second):
+        if (len(items) == 0):
+            return items
         similarityLimit = 0.25
         replacedRuleIndex = 0
         for entry in table_new:

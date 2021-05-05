@@ -9,9 +9,9 @@ import jedi
 def jedi_try_autocomplete_with_folder(content, line, position, folderName):
     result = []
     try:
-        script = jedi.Script(content, line, position, folderName)
-        completions = script.completions()
-    except jedi.NotFoundError:
+        script = jedi.Script(code=content, project = jedi.Project(folderName))
+        completions = script.complete(line=line, column=position)
+    except:
         completions = []
     for completion in completions:
         result.append({
