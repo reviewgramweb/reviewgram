@@ -144,13 +144,5 @@ def test_update_replace_table():
          update_replace_table(con, 500123000, [["kee", "koo"]])
          assert select_and_fetch_first_column(con, "SELECT COUNT(*) FROM `replace_tables` WHERE `REPO_ID` = 500123000",[]) == 1
          execute_update(con, "DELETE FROM `replace_tables` WHERE `REPO_ID` = 500123000", [])
-         
-def test_index():
-    assert index() == 'OK'
-    
-def test_reviewgram():
-    assert reviewgram() == 'OK'
-    
-def test_bot_username():
-    assert bot_username() == os.getenv("BOT_USERNAME")
+
     

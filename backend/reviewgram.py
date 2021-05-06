@@ -35,7 +35,7 @@ load_dotenv(find_dotenv())
 
 bot_webhook_token = os.getenv("BOT_WEBHOOK_TOKEN")
 bot_api_token  = os.getenv("BOT_API_TOKEN")
-
+nowrap = None
 app = Flask(__name__)
 
 # Исключение для таймаута
@@ -337,9 +337,9 @@ def reviewgram():
 @app.route('/reviewgram/bot_username/')
 def bot_username():
     return os.getenv("BOT_USERNAME")
+    
 
-@app.route('/reviewgram/bot/', methods=['POST', 'GET'])
-def bot_api():
+def imp_bot_api(request):
     if request.args.get('token') != bot_webhook_token:
         abort(404)
     data = request.json
@@ -362,28 +362,46 @@ def bot_api():
                     execute_update(con, "INSERT INTO `token_to_user_id`(USER_ID, TOKEN, TSTAMP) VALUES (%s, %s, UNIX_TIMESTAMP(NOW()))", [userId, decoded])
         else:
             append_to_log("/reviewgram/bot: no data")
-            abort(404)
+            return 'ERROR'
     except binascii.Error:
         append_to_log("/reviewgram/bot: Unable to decode message: " + message)
         return 'ERROR'
     except Exception as e:
+        if message is None:
+            message = ""
         append_to_log("/reviewgram/bot: Exception " + traceback.format_exc() + "\nMessage was: " + message)
         return 'ERROR'
     return 'OK'
 
+@app.route('/reviewgram/bot/', methods=['POST', 'GET'])
+def bot_api():
+    return imp_bot_api(request)
 
-@app.route('/reviewgram/register_chat_id_for_token/', methods=['POST'])
-def register_chat_id_for_token():
+
+def imp_register_chat_id_for_token(request):
     chatId = request.values.get("chatId")
     uuid = request.values.get("uuid")
     if (is_user_in_chat(uuid, chatId)):
         return 'OK'
     else:
         abort(404)
+    
+@app.route('/reviewgram/register_chat_id_for_token/', methods=['POST'])
+def register_chat_id_for_token():
+    return imp_register_chat_id_for_token(request)
+
+def toggle_nowrap():
+    global nowrap
+    nowrap = True
+
+def if_jsonify(o):
+    global nowrap
+    if nowrap is None:
+        return jsonify(o)
+    return o
 
 
-@app.route('/reviewgram/get_repo_settings/')
-def get_repo_settings():
+def imp_get_repo_settings(request):
     chatId = request.values.get("chatId")
     uuid = request.values.get("uuid")
     if (is_user_in_chat(uuid, chatId)):
@@ -401,14 +419,19 @@ def get_repo_settings():
                 if (len(row[4]) > 0):
                     c = AESCipher()
                     password = c.decrypt(row[4])
-                return jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5], "id": row[6], "table": table })
+                return if_jsonify({"site": row[0], "repo_user_name": row[1], "repo_same_name": row[2], "user": row[3], "password": base64.b64encode(password.encode('UTF-8')).decode('UTF-8'), "langId" : row[5], "id": row[6], "table": table })
             else:
-                return jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1, "id": 0, "table": []})
+                return if_jsonify({"site": "", "repo_user_name" : "", "repo_same_name": "", "user": "", "password": "", "langId": 1, "id": 0, "table": []})
     else:
         abort(404)
 
-@app.route('/reviewgram/set_repo_settings/', methods=['POST'])
-def set_repo_settings():
+@app.route('/reviewgram/get_repo_settings/')
+def get_repo_settings():
+    return imp_get_repo_settings(request)
+
+
+def imp_set_repo_settings(request):
+    global nowrap
     json = request.json
     chatId = safe_get_key(json, ["chatId"])
     uuid = safe_get_key(json, ["uuid"])
@@ -420,60 +443,59 @@ def set_repo_settings():
     table = safe_get_key(json, ["table"])
     if (is_user_in_chat(uuid, chatId)):        
         if (repoUserName is None):
-            return jsonify({"error": "Не указано имя собственника репозитория"})
+            return if_jsonify({"error": "Не указано имя собственника репозитория"})
         else:
             repoUserName = repoUserName.strip()
             if (len(repoUserName) == 0):
-                return jsonify({"error": "Не указано имя собственника репозитория"})
+                return if_jsonify({"error": "Не указано имя собственника репозитория"})
 
         if (repoSameName is None):
-            return jsonify({"error": "Не указано имя репозитория"})
+            return if_jsonify({"error": "Не указано имя репозитория"})
         else:
             repoSameName = repoSameName.strip()
             if (len(repoSameName) == 0):
-                return jsonify({"error": "Не указано имя репозитория"})
+                return if_jsonify({"error": "Не указано имя репозитория"})
 
         if (user is None):
-            return jsonify({"error": "Не указано имя пользователя"})
+            return if_jsonify({"error": "Не указано имя пользователя"})
         else:
             user = user.strip()
             if (len(user) == 0):
-                return jsonify({"error": "Не указано имя пользователя"})
+                return if_jsonify({"error": "Не указано имя пользователя"})
 
         if (password is None):
-            return jsonify({"error": "Не указан пароль"})
+            return if_jsonify({"error": "Не указан пароль"})
         else:
             try:
                 password = base64.b64decode(password).strip()
                 if (len(password) == 0):
-                    return jsonify({"error": "Не указан пароль"})
+                    return if_jsonify({"error": "Не указан пароль"})
             except Exception as e:
-                return jsonify({"error": "Не указан пароль"})
+                return if_jsonify({"error": "Не указан пароль"})
         
         if (table is None):
-            return jsonify({"error": "Не указана таблица записей"})
+            return if_jsonify({"error": "Не указана таблица записей"})
         if (not isinstance(table, list)):
-            return jsonify({"error": "Не указана таблица записей"})
+            return if_jsonify({"error": "Не указана таблица записей"})
         error = validate_replace_table(table)
         if (len(error) != 0):
-            return jsonify({"error": error})
+            return if_jsonify({"error": error})
 
         
         con = connect_to_db()
-        if (langId is None):
-            return jsonify({"error": "Не указан ID языка"})
-        else:
-            try:
-                langId = int(langId)
-                row = select_and_fetch_one(con, "SELECT * FROM `languages` WHERE `ID` = %s LIMIT 1", [langId])
-                if (row is None):
-                    return jsonify({"error": "Не найден язык"})
-            except Exception as e:
-                return jsonify({"error": "Не распарсен язык"})
-
-        c = AESCipher()
-        password = c.encrypt(password)
         with con:
+            if (langId is None):
+                return if_jsonify({"error": "Не указан ID языка"})
+            else:
+                try:
+                    langId = int(langId)
+                    row = select_and_fetch_one(con, "SELECT * FROM `languages` WHERE `ID` = %s LIMIT 1", [langId])
+                    if (row is None):
+                        return if_jsonify({"error": "Не найден язык"})
+                except Exception as e:
+                    return if_jsonify({"error": "Не распарсен язык"})
+            c = AESCipher()
+            password = c.encrypt(password)
             row = select_and_fetch_one(con, "SELECT ID FROM `repository_settings` WHERE `CHAT_ID` = %s LIMIT 1", [chatId])
             id = 0
             if (row is not None):
@@ -482,12 +504,15 @@ def set_repo_settings():
             else:
                 id = execute_insert(con, "INSERT INTO `repository_settings`(CHAT_ID, REPO_SITE, REPO_USER_NAME, REPO_SAME_NAME, USER, PASSWORD, LANG_ID) VALUES (%s, %s, %s, %s, %s, %s, %s)", [chatId, 'github.com', repoUserName, repoSameName, user, password, langId])
             update_replace_table(con, id, table)
-            return jsonify({"error": ""})
+            return if_jsonify({"error": ""})
     else:
         abort(404)
 
-@app.route('/reviewgram/try_lock/')
-def try_lock():
+@app.route('/reviewgram/set_repo_settings/', methods=['POST'])
+def set_repo_settings():
+    return imp_set_repo_settings(request)
+
+def imp_try_lock(request):
     chatId = request.values.get("chatId")
     uuid = request.values.get("uuid")
     if (is_user_in_chat(uuid, chatId)):
@@ -497,12 +522,16 @@ def try_lock():
         with con:
             row = select_and_fetch_one(con, "SELECT * FROM `repo_locks` WHERE `TOKEN` <> %s AND `CHAT_ID` = %s AND " + str(timestamp) + " - TSTAMP <= " + str(lockTime) + " LIMIT 1", [uuid, chatId])
             if (row is not None):
-                return jsonify({"locked": True})
+                return if_jsonify({"locked": True})
             else:
                 insert_or_update_repo_lock(con, chatId, uuid)
-                return jsonify({"locked": False})
+                return if_jsonify({"locked": False})
     else:
         abort(404)
+
+@app.route('/reviewgram/try_lock/')
+def try_lock():
+    return imp_try_lock(request)
 
 @app.route('/reviewgram/check_syntax/', methods=['POST', 'GET'])
 def check_syntax():

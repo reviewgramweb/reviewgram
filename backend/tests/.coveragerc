@@ -22,6 +22,8 @@ exclude_lines =
     def __repr__
     if self\.debug
     append_to_log
+    return imp_
+    def if_jsonify:
     # Don't complain if tests don't hit defensive assertion code:
     raise AssertionError
     raise NotImplementedError
