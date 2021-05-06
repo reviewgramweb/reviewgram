@@ -42,6 +42,25 @@ class RequestValues:
         self.values = o
 
 
+class MockFile:
+    def __init__(self, size):
+        self.size = size
+
+    def seek(self, a1, a2):
+        return
+
+    def tell(self):
+        return self.size
+
+    def save(self, filename):
+        fileObject = open(filename, 'wb')
+        fileObject.close()
+        
+class FormWithFiles:
+    def __init__(self, values, file):
+        self.form = DictWrap(values)
+        self.files = DictWrap({"record": file})
+
 def test_index():
     assert index() == 'OK'
     
@@ -392,4 +411,195 @@ def test_try_lock():
         execute_update(con, "DELETE FROM `token_to_chat_id` WHERE `TOKEN` = 'PITOK'", [])        
         execute_update(con, "DELETE FROM `repo_locks` WHERE `TOKEN` = 'MYTOK'", [])
         execute_update(con, "DELETE FROM `repo_locks` WHERE `TOKEN` = 'PITOK'", [])
+
+
+def test_check_syntax():
+    global request
+    toggle_nowrap()
+    path = os.path.dirname(os.path.abspath(__file__))
+    env_path = Path(path + "/../") / '.env'
+    load_dotenv(dotenv_path=env_path)
+    try:
+        request = JSONWithArgs(None, DictWrap({}))
+        result = imp_check_syntax(request)
+        assert not (result["errors"] is  None)
+        assert len(result["errors"]) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({}, DictWrap({}))
+        result = imp_check_syntax(request)
+        assert not (result["errors"] is  None)
+        assert len(result["errors"]) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"filename": "a.py", "content": "aaaa", "start": 0, "end": 1, "langId": 15}, DictWrap({}))
+        result = imp_check_syntax(request)
+        assert not (result["errors"] is  None)
+        assert len(result["errors"]) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"filename": "a.py", "content": base64.b64encode("a = a + 1".encode("UTF-8")), "start": 0, "end": 1, "langId": 15}, DictWrap({}))
+        result = imp_check_syntax(request)
+        assert not (result["errors"] is  None)
+        assert len(result["errors"]) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"filename": "a.py", "content": base64.b64encode("a = a +".encode("UTF-8")), "start": 0, "end": 1, "langId": 1}, DictWrap({}))
+        result = imp_check_syntax(request)
+        assert not (result["errors"] is  None)
+        assert len(result["errors"]) != 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"filename": "a.py", "content": base64.b64encode("a = 2 + 2".encode("UTF-8")), "start": 0, "end": 1, "langId": 1}, DictWrap({}))
+        result = imp_check_syntax(request)
+        assert not (result["errors"] is  None)
+        assert len(result["errors"]) == 0
+    except NotFound:
+        assert False
         
+def test_get_autocompletions():
+    global request
+    toggle_nowrap()
+    path = os.path.dirname(os.path.abspath(__file__))
+    env_path = Path(path + "/../") / '.env'
+    load_dotenv(dotenv_path=env_path)
+    try:
+        request = JSONWithArgs(None, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"tokens": {}, "content": "55", "line": 1, "position": 1, "chatId":  -485373794, "branchId": "master", "langId": 15}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"tokens": [], "content": "55", "line": 1, "position": 1,"chatId":  -485373794, "branchId": "master", "langId": 15}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"tokens": [], "content": base64.b64encode("a = 2 + 2".encode("UTF-8")), "line": 1, "position": 1,"chatId":  -485373794, "branchId": "master", "langId": 15}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) == 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"tokens": ["import"], "content": base64.b64encode("import ".encode("UTF-8")), "line": 1, "position": 7,"chatId":  -485373794, "branchId": "master", "langId": 1}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) != 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"tokens": ["import", "o"], "content": base64.b64encode("import o".encode("UTF-8")), "line": 1, "position": 9, "chatId":  -485373794, "branchId": "master", "langId": 1}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) != 0
+    except NotFound:
+        assert False
+    try:
+        request = JSONWithArgs({"tokens": ["import", "dee", ".", "doo"], "content": base64.b64encode("import dee.doo".encode("UTF-8")), "line": 1,"position": 12, "chatId":  -485373794, "branchId": "master", "langId": 1}, DictWrap({}))
+        result = imp_get_autocompletions(request)
+        assert len(result) == 0
+    except NotFound:
+        assert False
+
+
+def test_start_recognizing():
+    global request
+    toggle_nowrap()
+    path = os.path.dirname(os.path.abspath(__file__))
+    env_path = Path(path + "/../") / '.env'
+    load_dotenv(dotenv_path=env_path)
+    repoId = 0;        
+    try:
+        request = FormWithFiles({}, None)
+        result = imp_start_recognizing(request)
+        assert not ("id" in result)
+    except NotFound:
+        assert False
+    try:
+        request = FormWithFiles({"repoId": "errr"}, None)
+        result = imp_start_recognizing(request)
+        assert not ("id" in result)
+    except NotFound:
+        assert False
+    try:
+        request = FormWithFiles({"repoId": 0, "content": None}, None)
+        result = imp_start_recognizing(request)
+        assert not ("id" in result)
+    except NotFound:
+        assert False
+    try:
+        request = FormWithFiles({"repoId": 0, "content": "222", "langId": "1"}, None)
+        result = imp_start_recognizing(request)
+        assert not ("id" in result)
+    except NotFound:
+        assert False
+    try:
+        request = FormWithFiles({"repoId": 0, "content": "222", "langId": "1"}, MockFile(500 * 1024 * 1024))
+        result = imp_start_recognizing(request)
+        assert not ("id" in result)
+    except NotFound:
+        assert False
+    try:
+        request = FormWithFiles({"repoId": 0, "content": "222", "langId": None}, MockFile(1024))
+        result = imp_start_recognizing(request)
+        assert result["id"] > 0
+        print(result)
+        ddd = imp_recognizing_status(RequestValues(DictWrap(result)))
+        assert "status" in ddd
+        time.sleep(3)
+        con = connect_to_db()
+        with con:
+            execute_update(con, "DELETE FROM `recognize_tasks` WHERE `ID` = " + str(result["id"]), [])
+    except NotFound:
+        assert False
+    try:
+        request = FormWithFiles({"repoId": 0, "content": "222", "langId": "1"}, MockFile(1024))
+        result = imp_start_recognizing(request)
+        assert result["id"] > 0
+        print(result)
+        ddd = imp_recognizing_status(RequestValues(DictWrap(result)))
+        assert "status" in ddd
+        time.sleep(3)
+        con = connect_to_db()
+        with con:
+            execute_update(con, "DELETE FROM `recognize_tasks` WHERE `ID` = " + str(result["id"]), [])
+    except NotFound:
+        assert False
+        
+def test_recognizing_status():
+    global request
+    toggle_nowrap()
+    path = os.path.dirname(os.path.abspath(__file__))
+    env_path = Path(path + "/../") / '.env'
+    load_dotenv(dotenv_path=env_path)
+    try:
+        r = imp_recognizing_status(RequestValues(DictWrap({})))
+        assert r["status"] == "pending"
+    except NotFound:
+        assert False
+    try:
+        r = imp_recognizing_status(RequestValues(DictWrap({"id": "er"})))
+        assert r["status"] == "pending"
+    except NotFound:
+        assert False
+    try:
+        r = imp_recognizing_status(RequestValues(DictWrap({"id": "5000000000"})))
+        assert r["status"] == "pending"
+    except NotFound:
+        assert False

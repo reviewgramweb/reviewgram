@@ -532,12 +532,11 @@ def imp_try_lock(request):
 @app.route('/reviewgram/try_lock/')
 def try_lock():
     return imp_try_lock(request)
-
-@app.route('/reviewgram/check_syntax/', methods=['POST', 'GET'])
-def check_syntax():
+    
+def imp_check_syntax(request):
     data = request.json
     if data is None:
-        return jsonify({"errors": ""})
+        return if_jsonify({"errors": ""})
     try:
         fileName = safe_get_key(data, ["filename"])
         content = safe_get_key(data, ["content"])
@@ -549,16 +548,19 @@ def check_syntax():
             langId = int(langId)
             errors = LanguageFactory().create(langId).checkSyntax(fileName, fileContent.decode('UTF-8'), start, end)
             errors = base64.b64encode(errors.encode('UTF-8')).decode('UTF-8')
-            return jsonify({"errors": errors})
+            return if_jsonify({"errors": errors})
     except Exception as e:
         append_to_log("/reviewgram/check_syntax: Exception " + traceback.format_exc())
-    return jsonify({"errors": ""})
+    return if_jsonify({"errors": ""})
+    
+@app.route('/reviewgram/check_syntax/', methods=['POST', 'GET'])
+def check_syntax():
+    return imp_check_syntax(request)
 
-@app.route('/reviewgram/get_autocompletions/', methods=['POST', 'GET'])
-def get_autocompletions():
+def imp_get_autocompletions(request):
     data = request.json
     if data is None:
-        return jsonify([])
+        return if_jsonify([])
     try:
         tokens = safe_get_key(data, ["tokens"])
         content = safe_get_key(data, ["content"])
@@ -596,13 +598,16 @@ def get_autocompletions():
                     filteredResult.append(part)
             if (len(filteredResult) > 5):
                 filteredResult = filteredResult[0:5]
-            return jsonify(filteredResult)
+            return if_jsonify(filteredResult)
     except Exception as e:
         append_to_log("/reviewgram/get_autocompletions: Exception " + traceback.format_exc())
-    return jsonify([])
-    
-@app.route('/reviewgram/start_recognizing/', methods=['POST'])
-def start_recognizing():
+    return if_jsonify([])
+
+@app.route('/reviewgram/get_autocompletions/', methods=['POST', 'GET'])
+def get_autocompletions():
+    return imp_get_autocompletions(request)
+
+def imp_start_recognizing(request):
     perfLogFileName =  os.getenv("APP_FOLDER") + "/perf_log.txt"
     fileObject = open(perfLogFileName, 'at')
     start = time.perf_counter() 
@@ -614,6 +619,7 @@ def start_recognizing():
         try:
             repoId = int(repoId)
         except Exception as e:
+            repoId = 0
             append_to_log("/reviewgram/start_recognizing: broken repo id")
     if (content is None):
         content = ""
@@ -621,14 +627,14 @@ def start_recognizing():
         append_to_log("/reviewgram/start_recognizing: " + request.form.get("langId"))
     if (record is None):
         fileObject.close()
-        return jsonify([])
+        return if_jsonify({})
     measure1 = time.perf_counter()
     fileObject.write("Pretesting args for recognition: " + str(measure1 - start)  + "\n")
     record.seek(0, os.SEEK_END)
     fileLength = record.tell()
     if (fileLength >= int(os.getenv("MAX_RECORD_SIZE")) * 1024 * 1024):
         fileObject.close()
-        return jsonify({"error": "file is too large: " + str(fileLength) })
+        return if_jsonify({"error": "file is too large: " + str(fileLength) })
     fileName = os.getenv("APP_FOLDER") + "records/" + str(uuid.uuid4()) + "-" +  str(time.time()) + ".ogg"
     append_to_log("/reviewgram/start_recognizing: " + fileName)
     measure2 = time.perf_counter()
@@ -654,25 +660,33 @@ def start_recognizing():
     measure4 = time.perf_counter()
     fileObject.write("Saving to DB and launching task: " + str(measure4 - measure3)  + "\n")
     fileObject.close()
-    return jsonify({"id": rowId})
-    
-@app.route('/reviewgram/recognizing_status/', methods=['GET'])
-def recognizing_status():
+    return if_jsonify({"id": rowId})
+
+@app.route('/reviewgram/start_recognizing/', methods=['POST'])
+def start_recognizing():
+    return imp_start_recognizing(request)
+
+
+def imp_recognizing_status(request):
     id = request.values.get("id")
     if (id is None):
-        return  jsonify({"status": "pending"})
+        return  if_jsonify({"status": "pending"})
     else:
         try:
             id = int(id)
             con = connect_to_db()
             row = select_and_fetch_one(con, "SELECT `ID`, `RES` FROM `recognize_tasks` WHERE `ID` = %s AND `DATE_END` IS NOT NULL LIMIT 1", [id])
             if (row is not None):
-                return  jsonify({"status": "ok", "result": row[1] })
+                return  if_jsonify({"status": "ok", "result": row[1] })
             else:
-                return  jsonify({"status": "pending"})
+                return  if_jsonify({"status": "pending"})
         except Exception as e:
             append_to_log("/reviewgram/recognizing_status: Exception " + traceback.format_exc())
-            return  jsonify({"status": "pending"})
+            return  if_jsonify({"status": "pending"})
+
+@app.route('/reviewgram/recognizing_status/', methods=['GET'])
+def recognizing_status():
+    return imp_recognizing_status(request)
  
 if __name__ == '__main__':
     gunicorn_logger = logging.getLogger("gunicorn.error")
