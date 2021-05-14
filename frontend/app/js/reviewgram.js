@@ -1284,7 +1284,7 @@ function Reviewgram() {
             var pos = me._mainEditor.getCursorPosition();
             var lines = me._mainEditor.session.doc.getAllLines();
             var line = lines[pos.row];
-            var indentation = 0;
+            var indentation = "";
             var indentationFound = false;
             var indentationSym = "\t";
             var nextLine = true;
@@ -1327,7 +1327,11 @@ function Reviewgram() {
                 text = indent.indentation + text;
             }
             me._mainEditor.session.insert({"row": row, "column": column}, text);
-            me._mainEditor.gotoLine(row + 2,  (indent.indentation + indent.tab).length);
+            var gotocolumn = column + 4;
+            if (s.startsWith("while")) {
+                gotocolumn = column + 7;
+            }
+            me._mainEditor.gotoLine(row + 1,  gotocolumn);
             me._mainEditor.focus();
         };
         $scope.insertIfElseLike = function(s1, s2) {
@@ -1347,7 +1351,17 @@ function Reviewgram() {
                 text = indent.indentation + text;
             }
             me._mainEditor.session.insert({"row": row, "column": column}, text);
-            me._mainEditor.gotoLine(row + 2,  (indent.indentation + indent.tab).length);
+            var gotocolumn = column + 4;
+            var gotorow = row + 1;
+            if (s1.startsWith("while")) {
+                gotocolumn = column + 7;
+            }
+            if (s1.startsWith("try")) {
+                gotorow = row + 2;
+                gotocolumn =  (indent.indentation + indent.tab).length;
+            }
+
+            me._mainEditor.gotoLine(gotorow,  gotocolumn);
             me._mainEditor.focus();
         };
         $scope.insertIfLess = function() {
@@ -1419,6 +1433,12 @@ function Reviewgram() {
             me._mainEditor.gotoLine(pos.row + 1,  pos.column + word.length);
             me._mainEditor.focus();
         };
+        $scope.__insertWordWithOffset = function(word, offset) {
+            var pos = me._mainEditor.getCursorPosition();
+            me._mainEditor.session.insert({"row": pos.row, "column": pos.column}, word);
+            me._mainEditor.gotoLine(pos.row + 1,  pos.column + offset);
+            me._mainEditor.focus();
+        };
         $scope.insertBreak = function() {
             this.__insertWord("break");
         };
@@ -1430,6 +1450,18 @@ function Reviewgram() {
         };
         $scope.insertImportStmt = function() {
             this.__insertWord("import ");
+        };
+        $scope.insertLBracket = function() {
+            this.__insertWord("[");
+        };
+        $scope.insertRBracket = function() {
+            this.__insertWord("]");
+        };
+        $scope.insertComma = function() {
+            this.__insertWord(",");
+        };
+        $scope.insertArrayLike = function() {
+            this.__insertWordWithOffset("[ , ]", 1);
         };
         $scope.removeTab = function() {
             var pos = me._mainEditor.getCursorPosition();
