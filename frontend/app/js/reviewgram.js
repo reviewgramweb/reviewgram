@@ -1463,6 +1463,18 @@ function Reviewgram() {
         $scope.insertArrayLike = function() {
             this.__insertWordWithOffset("[ , ]", 1);
         };
+        $scope.insertDot = function() {
+            this.__insertWord(".");
+        };
+        $scope.insertSemicolon = function() {
+            this.__insertWord(":");
+        };
+        $scope.insertLRBracket = function() {
+            this.__insertWord("(");
+        };
+        $scope.insertRRBracket = function() {
+            this.__insertWord(")");
+        };
         $scope.removeTab = function() {
             var pos = me._mainEditor.getCursorPosition();
             var lines = me._mainEditor.session.doc.getAllLines();
