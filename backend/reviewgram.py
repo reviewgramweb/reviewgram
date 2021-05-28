@@ -266,14 +266,26 @@ def is_user_in_chat(uuid, chatId):
                         response = requests.get(url, params=params)
                         json_response = response.json()
                         if (json_response is None):
-                            append_to_log("/reviewgram/register_chat_id_for_token/: unable to parse response")
+                            append_to_log("/reviewgram/register_chat_id_for_token/: unable to parse response from request:" + url + ", params" + json.dumps(params))
                             return False
                         else:
                             if (json_response["ok"] is True):
                                 insert_or_update_token_to_chat(con, chatId, uuid)
                                 return True
                             else:
-                                append_to_log("/reviewgram/register_chat_id_for_token/: TG API reported that user is not in chat")
+                                if (("chat" in json_response["description"]) and (chatId < 0)):
+                                    kchatId = "-100" + str(-1 * chatId)
+                                    params = {'user_id': userId,  'chat_id' : kchatId}
+                                    response = requests.get(url, params=params)
+                                    json_response = response.json()
+                                    if (json_response is None):
+                                        append_to_log("/reviewgram/register_chat_id_for_token/: unable to parse response from request:" + url + ", params" + json.dumps(params))
+                                        return False
+                                    else:
+                                        if (json_response["ok"] is True):
+                                            insert_or_update_token_to_chat(con, chatId, uuid)
+                                            return True
+                                append_to_log("/reviewgram/register_chat_id_for_token/: TG API reported that user " + str(userId) + "is not in chat " + str(chatId))
                                 return False
                     else:
                         return True
